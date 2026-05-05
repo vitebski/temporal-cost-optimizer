@@ -380,9 +380,15 @@ async function renderWorkflowUsage(namespace, workflowType) {
   main.innerHTML = `
     <div style="padding: 2rem;">
       ${backButton("Back to workflow types", `#/cost-analyser/namespace/${encodeURIComponent(namespace)}`)}
-      <div style="margin: 1.5rem 0;">
-        <h1 style="font-size: 1.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #f8fafc;">${workflowType}</h1>
-        <p style="color: #94a3b8; font-size: 0.875rem;">${namespace}</p>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin: 1.5rem 0;">
+        <div>
+          <h1 style="font-size: 1.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #f8fafc;">${workflowType}</h1>
+          <p style="color: #94a3b8; font-size: 0.875rem;">${namespace}</p>
+        </div>
+        <a class="tca-optimize-btn" href="#/cost-analyser/workflow/${encodeURIComponent(workflowType)}/analyze">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Optimize
+        </a>
       </div>
 
       ${isStub ? stubBanner() : ''}
@@ -437,13 +443,6 @@ async function renderWorkflowUsage(namespace, workflowType) {
             <div style="font-size: 1.125rem; font-weight: 600;">${formatNumber(s.p95HistoryEvents)}</div>
           </div>
         </div>
-      </div>
-
-      <div style="margin-top: 2rem;">
-        <a class="tca-optimize-btn" href="#/cost-analyser/workflow/${encodeURIComponent(workflowType)}/analyze">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-          Optimize
-        </a>
       </div>
     </div>`;
 }
