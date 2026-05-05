@@ -213,10 +213,10 @@ function renderError(main, message) {
 }
 
 function backButton(label, hash) {
-  return `<button class="tca-back-btn" onclick="window.location.hash='${hash}'">
+  return `<a class="tca-back-btn" href="${hash}">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
     ${label}
-  </button>`;
+  </a>`;
 }
 
 function ensureTcaContainer() {
