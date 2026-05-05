@@ -251,37 +251,37 @@ async function renderOverview() {
   const rows = namespaces.map((ns, i) => `
     <tr class="tca-clickable" data-ns="${ns.namespace}">
       <td style="color: #94a3b8; font-weight: 500;">${ns.rank || i + 1}</td>
-      <td style="font-weight: 600; color: #1e293b;">${ns.namespace}${ns.incomplete ? ' <span style="font-size:0.7rem;color:#f59e0b;font-weight:normal;">(incomplete)</span>' : ''}</td>
-      <td style="color: #334155;">${formatCurrency(ns.estimatedCost)}</td>
-      <td style="color: #64748b;">${formatNumber(Math.round(ns.usageScore))}</td>
+      <td style="font-weight: 600; color: #f8fafc;">${ns.namespace}${ns.incomplete ? ' <span style="font-size:0.7rem;color:#f59e0b;font-weight:normal;">(incomplete)</span>' : ''}</td>
+      <td style="color: #cbd5e1;">${formatCurrency(ns.estimatedCost)}</td>
+      <td style="color: rgb(146, 164, 195);">${formatNumber(Math.round(ns.usageScore))}</td>
       <td>${trendBadge(ns.trend)}</td>
     </tr>`).join("");
 
   main.innerHTML = `
     <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
       <div style="margin-bottom: 2rem;">
-        <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; color: #f8fafc;">Cost Analyser</h1>
+        <h1 style="font-size: 1.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #f8fafc;">Cost Analyser</h1>
         <p style="color: #94a3b8; font-size: 0.875rem;">Top ${namespaces.length} namespaces by usage</p>
       </div>
 
       ${isStub ? stubBanner() : ''}
 
       <div style="display: flex; gap: 1.5rem; margin-bottom: 2rem;">
-        <div style="background: #f8fafc; border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1; color: #1e293b;">
+        <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1;">
           <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Total Est. Cost</div>
-          <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${formatCurrency(totalCost)}</div>
+          <div style="font-size: 1.5rem; font-weight: 700; color: #f8fafc;">${formatCurrency(totalCost)}</div>
         </div>
-        <div style="background: #f8fafc; border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1; color: #1e293b;">
+        <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1;">
           <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Namespaces</div>
-          <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${namespaces.length}</div>
+          <div style="font-size: 1.5rem; font-weight: 700; color: #f8fafc;">${namespaces.length}</div>
         </div>
-        <div style="background: #f8fafc; border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1; color: #1e293b;">
+        <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1;">
           <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Top Usage Score</div>
-          <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${formatNumber(Math.round(topScore))}</div>
+          <div style="font-size: 1.5rem; font-weight: 700; color: #f8fafc;">${formatNumber(Math.round(topScore))}</div>
         </div>
       </div>
 
-      <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; overflow: hidden; color: #1e293b;">
+      <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; overflow: hidden; color: #f8fafc;">
         <table class="tca-table">
           <thead>
             <tr>
@@ -320,25 +320,25 @@ async function renderWorkflowTypes(namespace) {
   const rows = items.map((wt, i) => `
     <tr class="tca-clickable" data-wt="${wt.workflowType}" data-ns="${namespace}">
       <td style="color: #94a3b8; font-weight: 500;">${i + 1}</td>
-      <td style="font-weight: 600; color: #1e293b;">${wt.workflowType}</td>
-      <td style="color: #334155;">${formatCurrency(wt.estimatedCost)}</td>
-      <td style="color: #64748b;">${formatNumber(Math.round(wt.usageScore))}</td>
-      <td style="color: #64748b;">${formatNumber(wt.executions)}</td>
-      <td style="color: #64748b;">${formatNumber(wt.signals)}</td>
-      <td style="color: #64748b;">${formatNumber(wt.activities)}</td>
+      <td style="font-weight: 600; color: #f8fafc;">${wt.workflowType}</td>
+      <td style="color: #cbd5e1;">${formatCurrency(wt.estimatedCost)}</td>
+      <td style="color: rgb(146, 164, 195);">${formatNumber(Math.round(wt.usageScore))}</td>
+      <td style="color: rgb(146, 164, 195);">${formatNumber(wt.executions)}</td>
+      <td style="color: rgb(146, 164, 195);">${formatNumber(wt.signals)}</td>
+      <td style="color: rgb(146, 164, 195);">${formatNumber(wt.activities)}</td>
     </tr>`).join("");
 
   main.innerHTML = `
     <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
       ${backButton("Back to namespaces", "#/cost-analyser")}
       <div style="margin: 1.5rem 0;">
-        <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; color: #f8fafc;">${namespace}</h1>
+        <h1 style="font-size: 1.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #f8fafc;">${namespace}</h1>
         <p style="color: #94a3b8; font-size: 0.875rem;">Top ${items.length} workflow types by usage</p>
       </div>
 
       ${isStub ? stubBanner() : ''}
 
-      <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; overflow: hidden; color: #1e293b;">
+      <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; overflow: hidden; color: #f8fafc;">
         <table class="tca-table">
           <thead>
             <tr>
@@ -385,42 +385,42 @@ async function renderWorkflowUsage(namespace, workflowType) {
     <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
       ${backButton("Back to workflow types", `#/cost-analyser/namespace/${encodeURIComponent(namespace)}`)}
       <div style="margin: 1.5rem 0;">
-        <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; color: #f8fafc;">${workflowType}</h1>
+        <h1 style="font-size: 1.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #f8fafc;">${workflowType}</h1>
         <p style="color: #94a3b8; font-size: 0.875rem;">${namespace}</p>
       </div>
 
       ${isStub ? stubBanner() : ''}
 
       <div style="display: flex; gap: 1.5rem; margin-bottom: 2rem;">
-        <div style="background: #f8fafc; border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1; color: #1e293b;">
+        <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1;">
           <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Executions</div>
-          <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${formatNumber(s.executions)}</div>
+          <div style="font-size: 1.5rem; font-weight: 700; color: #f8fafc;">${formatNumber(s.executions)}</div>
         </div>
-        <div style="background: #f8fafc; border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1; color: #1e293b;">
+        <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1;">
           <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Billable Actions</div>
-          <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${formatNumber(s.billableActions)}</div>
+          <div style="font-size: 1.5rem; font-weight: 700; color: #f8fafc;">${formatNumber(s.billableActions)}</div>
         </div>
-        <div style="background: #f8fafc; border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1; color: #1e293b;">
+        <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1;">
           <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Total Storage Cost</div>
-          <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${formatCurrency(totalStorageCost)}</div>
+          <div style="font-size: 1.5rem; font-weight: 700; color: #f8fafc;">${formatCurrency(totalStorageCost)}</div>
         </div>
       </div>
 
-      <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 2rem; color: #1e293b;">
+      <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 2rem; color: #f8fafc;">
         <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 1rem;">Storage Breakdown</div>
         <div style="display: flex; gap: 2rem; margin-bottom: 1rem;">
           <div style="flex: 1;">
             <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.25rem;">Active Storage</div>
             <div style="font-size: 1.125rem; font-weight: 600;">${formatCurrency(s.storage.active.cost)}</div>
-            <div style="font-size: 0.75rem; color: #64748b;">${formatNumber(s.storage.active.usage)} units</div>
+            <div style="font-size: 0.75rem; color: rgb(146, 164, 195);">${formatNumber(s.storage.active.usage)} units</div>
           </div>
           <div style="flex: 1;">
             <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.25rem;">Retained Storage</div>
             <div style="font-size: 1.125rem; font-weight: 600;">${formatCurrency(s.storage.retained.cost)}</div>
-            <div style="font-size: 0.75rem; color: #64748b;">${formatNumber(s.storage.retained.usage)} units</div>
+            <div style="font-size: 0.75rem; color: rgb(146, 164, 195);">${formatNumber(s.storage.retained.usage)} units</div>
           </div>
         </div>
-        <div style="background: #e2e8f0; border-radius: 9999px; height: 8px; width: 100%;">
+        <div style="background: rgba(255, 255, 255, 0.1); border-radius: 9999px; height: 8px; width: 100%;">
           <div style="background: #6366f1; border-radius: 9999px; height: 100%; width: ${activePercent}%;"></div>
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #94a3b8; margin-top: 0.25rem;">
@@ -429,7 +429,7 @@ async function renderWorkflowUsage(namespace, workflowType) {
         </div>
       </div>
 
-      <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1.5rem; color: #1e293b;">
+      <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; padding: 1.5rem; color: #f8fafc;">
         <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 1rem;">History Events</div>
         <div style="display: flex; gap: 2rem;">
           <div style="flex: 1;">
@@ -458,33 +458,33 @@ async function renderWorkflowAnalysis(workflowId) {
   const isStub = data._stub;
 
   const findingsHTML = (data.signals || []).map((s) => `
-    <div style="padding: 1rem; border-bottom: 1px solid #f1f5f9;">
+    <div style="padding: 1rem; border-bottom: 0.75px solid rgb(39, 56, 96);">
       <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
         ${severityBadge(s.severity)}
-        <span style="font-weight: 600; color: #1e293b;">${s.type.replace(/_/g, " ")}</span>
+        <span style="font-weight: 600; color: #f8fafc;">${s.type.replace(/_/g, " ")}</span>
       </div>
-      <div style="font-size: 0.875rem; color: #64748b;">${s.evidence}</div>
+      <div style="font-size: 0.875rem; color: rgb(146, 164, 195);">${s.evidence}</div>
     </div>`).join("");
 
   const recsHTML = (data.recommendations || []).map((r) => `
-    <li style="padding: 0.5rem 0; color: #334155; font-size: 0.875rem;">${r}</li>`).join("");
+    <li style="padding: 0.5rem 0; color: #cbd5e1; font-size: 0.875rem;">${r}</li>`).join("");
 
   main.innerHTML = `
     <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
       ${backButton("Back", "#/cost-analyser")}
       <div style="margin: 1.5rem 0;">
-        <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; color: #f8fafc;">Workflow Analysis</h1>
+        <h1 style="font-size: 1.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #f8fafc;">Workflow Analysis</h1>
         <p style="color: #94a3b8; font-size: 0.875rem;">${data.workflowId}${data.workflowRunId ? ` · ${data.workflowRunId}` : ""}</p>
       </div>
 
       ${isStub ? stubBanner() : ''}
 
-      <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; overflow: hidden; margin-bottom: 2rem; color: #1e293b;">
+      <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; overflow: hidden; margin-bottom: 2rem; color: #f8fafc;">
         <div style="padding: 1rem 1rem 0; font-size: 0.875rem; font-weight: 600;">Findings</div>
         ${findingsHTML || '<div style="padding: 1rem; color: #94a3b8;">No findings</div>'}
       </div>
 
-      <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1.5rem; color: #1e293b;">
+      <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; padding: 1.5rem; color: #f8fafc;">
         <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">Recommendations</div>
         <ul style="margin: 0; padding-left: 1.25rem;">${recsHTML || '<li style="color: #94a3b8;">No recommendations</li>'}</ul>
       </div>
