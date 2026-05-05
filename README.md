@@ -2,6 +2,8 @@
 
 Temporal Cost Optimizer is a hackathon MVP for surfacing Temporal Cloud usage hotspots. It pairs a Chrome extension overlay with Go backend services that rank namespaces, prepare workflow drilldowns, and expose optimization analysis endpoints.
 
+> **Important Temporal Cloud API limitation:** Temporal Cloud APIs do not currently allow reading workflow and execution data directly from a namespace. Namespaces that require mTLS authentication also are not supported by this demo.
+
 ## Architecture
 
 ```mermaid
