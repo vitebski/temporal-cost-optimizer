@@ -68,3 +68,7 @@
 .tca-back-btn:hover {
   text-decoration: underline;
 }
+
+#content.tca-active > *:not(#tca-container) {
+  display: none !important;
+}

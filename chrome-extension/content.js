@@ -118,7 +118,6 @@ const COST_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="non
 
 // --- State ---
 
-let savedMainContent = null;
 let isActive = false;
 let navLink = null;
 
@@ -220,13 +219,24 @@ function backButton(label, hash) {
   </button>`;
 }
 
+function ensureTcaContainer() {
+  const main = document.getElementById("content");
+  if (!main) return null;
+  main.classList.add("tca-active");
+  let container = document.getElementById("tca-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "tca-container";
+    main.appendChild(container);
+  }
+  return container;
+}
+
 // --- Screen 1: Top Namespaces ---
 
 async function renderOverview() {
-  const main = document.getElementById("content");
+  const main = ensureTcaContainer();
   if (!main) return;
-
-  if (!isActive) savedMainContent = main.innerHTML;
   isActive = true;
   renderLoading(main);
   updateNavHighlight(true);
@@ -297,10 +307,8 @@ async function renderOverview() {
 // --- Screen 2: Top Workflow Types in Namespace ---
 
 async function renderWorkflowTypes(namespace) {
-  const main = document.getElementById("content");
+  const main = ensureTcaContainer();
   if (!main) return;
-
-  if (!isActive) savedMainContent = main.innerHTML;
   isActive = true;
   renderLoading(main);
   updateNavHighlight(true);
@@ -360,10 +368,8 @@ async function renderWorkflowTypes(namespace) {
 // --- Screen 3: Workflow Type Usage ---
 
 async function renderWorkflowUsage(namespace, workflowType) {
-  const main = document.getElementById("content");
+  const main = ensureTcaContainer();
   if (!main) return;
-
-  if (!isActive) savedMainContent = main.innerHTML;
   isActive = true;
   renderLoading(main);
   updateNavHighlight(true);
@@ -442,10 +448,8 @@ async function renderWorkflowUsage(namespace, workflowType) {
 // --- Screen 4: Workflow Analysis ---
 
 async function renderWorkflowAnalysis(workflowId) {
-  const main = document.getElementById("content");
+  const main = ensureTcaContainer();
   if (!main) return;
-
-  if (!isActive) savedMainContent = main.innerHTML;
   isActive = true;
   renderLoading(main);
   updateNavHighlight(true);
@@ -505,11 +509,12 @@ function updateNavHighlight(active) {
 function restoreOriginalContent() {
   if (!isActive) return;
   const main = document.getElementById("content");
-  if (main && savedMainContent !== null) {
-    main.innerHTML = savedMainContent;
+  if (main) {
+    main.classList.remove("tca-active");
+    const container = document.getElementById("tca-container");
+    if (container) container.remove();
   }
   isActive = false;
-  savedMainContent = null;
   updateNavHighlight(false);
 }
 
