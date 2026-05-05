@@ -24,6 +24,15 @@ func NewRouter(analyzer domain.Analyzer, optimizer domain.Optimizer) http.Handle
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	if req.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	if req.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only GET requests are supported.")
 		return

@@ -1,91 +1,95 @@
-// --- Stub Data ---
+// --- Configuration ---
 
-const MOCK_NAMESPACES = [
-  { name: "billing", cost: 1234.56, trend_pct: 12.3, workflow_count: 45 },
-  { name: "ingestion", cost: 987.0, trend_pct: -3.1, workflow_count: 32 },
-  { name: "default", cost: 654.2, trend_pct: 5.0, workflow_count: 28 },
-  { name: "analytics", cost: 432.1, trend_pct: 0.2, workflow_count: 15 },
-  { name: "notifications", cost: 210.75, trend_pct: 8.4, workflow_count: 9 },
+const API_BASE = "http://localhost:8080";
+
+// --- Stub Data (fallback when API returns 501 or is unreachable) ---
+
+const STUB_NAMESPACES = [
+  { namespace: "payments-prod", rank: 1, usageScore: 98342, estimatedCost: 124.55, storage: { active: { usage: 1200, cost: 80.25 }, retained: { usage: 3400, cost: 44.30 } }, trend: "up", incomplete: false },
+  { namespace: "ingestion-prod", rank: 2, usageScore: 72100, estimatedCost: 987.00, storage: { active: { usage: 900, cost: 55.00 }, retained: { usage: 2800, cost: 32.00 } }, trend: "down", incomplete: false },
+  { namespace: "default", rank: 3, usageScore: 45200, estimatedCost: 654.20, storage: { active: { usage: 600, cost: 35.10 }, retained: { usage: 1800, cost: 19.10 } }, trend: "up", incomplete: false },
+  { namespace: "analytics-prod", rank: 4, usageScore: 31500, estimatedCost: 432.10, storage: { active: { usage: 400, cost: 22.00 }, retained: { usage: 1200, cost: 10.10 } }, trend: "flat", incomplete: false },
+  { namespace: "notifications", rank: 5, usageScore: 18900, estimatedCost: 210.75, storage: { active: { usage: 200, cost: 12.00 }, retained: { usage: 700, cost: 8.75 } }, trend: "up", incomplete: false },
 ];
 
-const MOCK_DETAILS = {
-  billing: {
-    total_cost: 1234.56,
-    period: "Last 30 days",
-    workflows: [
-      { name: "BillingV3", cost: 500.0, executions: 12000 },
-      { name: "CopyBillFollowup", cost: 320.0, executions: 8500 },
-      { name: "ApplyBillingRules", cost: 214.56, executions: 6200 },
-      { name: "InvoiceGeneration", cost: 120.0, executions: 3400 },
-      { name: "PaymentReconciliation", cost: 80.0, executions: 1900 },
-    ],
-    daily_costs: [
-      32, 35, 38, 41, 44, 39, 36, 42, 45, 48, 43, 40, 37, 44, 47, 50, 46, 42,
-      38, 45, 48, 51, 47, 43, 39, 46, 49, 52, 48, 44,
-    ],
-  },
-  ingestion: {
-    total_cost: 987.0,
-    period: "Last 30 days",
-    workflows: [
-      { name: "DataIngestionPipeline", cost: 420.0, executions: 15000 },
-      { name: "SchemaValidation", cost: 280.0, executions: 9800 },
-      { name: "TransformAndLoad", cost: 187.0, executions: 5400 },
-      { name: "DeduplicationCheck", cost: 100.0, executions: 3200 },
-    ],
-    daily_costs: [
-      28, 30, 33, 35, 31, 29, 34, 36, 38, 33, 30, 27, 32, 35, 37, 34, 31, 28,
-      33, 36, 38, 35, 32, 29, 34, 37, 39, 36, 33, 30,
-    ],
-  },
-  default: {
-    total_cost: 654.2,
-    period: "Last 30 days",
-    workflows: [
-      { name: "CustomLabelsWorkflow", cost: 210.0, executions: 7200 },
-      { name: "RefreshRecommendations", cost: 180.0, executions: 5100 },
-      { name: "RunTaskActivities", cost: 144.2, executions: 4300 },
-      { name: "ColumnCatalogWorkflow", cost: 120.0, executions: 2800 },
-    ],
-    daily_costs: [
-      18, 20, 22, 25, 23, 19, 21, 24, 26, 22, 20, 17, 23, 25, 27, 24, 21, 18,
-      22, 25, 27, 24, 21, 18, 23, 26, 28, 25, 22, 19,
-    ],
-  },
-  analytics: {
-    total_cost: 432.1,
-    period: "Last 30 days",
-    workflows: [
-      { name: "DailyAggregation", cost: 180.0, executions: 3600 },
-      { name: "ReportGeneration", cost: 132.1, executions: 2100 },
-      { name: "MetricsCompaction", cost: 120.0, executions: 1800 },
-    ],
-    daily_costs: [
-      12, 13, 15, 14, 13, 12, 14, 16, 15, 13, 12, 11, 14, 15, 16, 14, 13, 12,
-      14, 16, 15, 14, 13, 12, 15, 16, 17, 15, 14, 13,
-    ],
-  },
-  notifications: {
-    total_cost: 210.75,
-    period: "Last 30 days",
-    workflows: [
-      { name: "SendAlertBatch", cost: 95.0, executions: 4500 },
-      { name: "DigestEmailWorkflow", cost: 65.75, executions: 2100 },
-      { name: "SlackNotifier", cost: 50.0, executions: 1800 },
-    ],
-    daily_costs: [
-      5, 6, 7, 8, 7, 6, 5, 7, 8, 9, 8, 7, 6, 7, 8, 9, 8, 7, 6, 8, 9, 10, 9,
-      8, 7, 8, 9, 10, 9, 8,
+const STUB_WORKFLOW_TYPES = {
+  _default: {
+    namespace: "unknown",
+    items: [
+      { workflowType: "MainWorkflow", usageScore: 44100, estimatedCost: 54.20, storage: { active: { usage: 600, cost: 35.10 }, retained: { usage: 1800, cost: 19.10 } }, executions: 12000, signals: 220, activities: 910 },
+      { workflowType: "HelperWorkflow", usageScore: 22000, estimatedCost: 28.50, storage: { active: { usage: 300, cost: 17.00 }, retained: { usage: 900, cost: 11.50 } }, executions: 6500, signals: 80, activities: 420 },
+      { workflowType: "CleanupWorkflow", usageScore: 8500, estimatedCost: 12.00, storage: { active: { usage: 100, cost: 5.00 }, retained: { usage: 500, cost: 7.00 } }, executions: 2100, signals: 10, activities: 190 },
     ],
   },
 };
 
-function getTopNamespaces() {
-  return MOCK_NAMESPACES;
+const STUB_WORKFLOW_USAGE = {
+  _default: {
+    workflowType: "MainWorkflow",
+    namespace: "default",
+    summary: {
+      storage: { active: { usage: 320, cost: 18.40 }, retained: { usage: 950, cost: 9.70 } },
+      executions: 182,
+      billableActions: 9100,
+      avgHistoryEvents: 144,
+      p95HistoryEvents: 302,
+    },
+  },
+};
+
+const STUB_ANALYSIS = {
+  _default: {
+    workflowId: "example-workflow",
+    workflowRunId: "example-run-001",
+    signals: [
+      { type: "large_payload", severity: "high", evidence: "3 events exceed payload threshold" },
+      { type: "excessive_signals", severity: "medium", evidence: "18 signals in one execution" },
+      { type: "history_bloat", severity: "low", evidence: "Event count 2x median for this workflow type" },
+    ],
+    recommendations: [
+      "Compress large payloads before storing them in workflow state.",
+      "Batch signals where possible.",
+      "Deduplicate repeated activities using memoization or cached results.",
+    ],
+  },
+};
+
+// --- API Functions (with stub fallback) ---
+
+async function getTopNamespaces() {
+  try {
+    const res = await fetch(`${API_BASE}/namespaces?top=5`);
+    if (res.ok) {
+      const data = await res.json();
+      return { items: data.items, _stub: false };
+    }
+  } catch (e) { /* network error — fall through to stub */ }
+  return { items: STUB_NAMESPACES, _stub: true };
 }
 
-function getNamespaceDetail(name) {
-  return MOCK_DETAILS[name] || null;
+async function getWorkflowTypes(namespace) {
+  try {
+    const res = await fetch(`${API_BASE}/namespaces/${encodeURIComponent(namespace)}/workflow-types?top=5`);
+    if (res.ok) { const data = await res.json(); return { ...data, _stub: false }; }
+  } catch (e) { /* fall through */ }
+  const stub = STUB_WORKFLOW_TYPES[namespace] || STUB_WORKFLOW_TYPES._default;
+  return { namespace, items: stub.items, _stub: true };
+}
+
+async function getWorkflowUsage(namespace, workflowType) {
+  try {
+    const res = await fetch(`${API_BASE}/workflow-types/${encodeURIComponent(workflowType)}/usage?namespace=${encodeURIComponent(namespace)}`);
+    if (res.ok) { const data = await res.json(); return { ...data, _stub: false }; }
+  } catch (e) { /* fall through */ }
+  return { ...STUB_WORKFLOW_USAGE._default, workflowType, namespace, _stub: true };
+}
+
+async function getWorkflowAnalysis(workflowId) {
+  try {
+    const res = await fetch(`${API_BASE}/workflows/${encodeURIComponent(workflowId)}/analyze`);
+    if (res.ok) { const data = await res.json(); return { ...data, _stub: false }; }
+  } catch (e) { /* fall through */ }
+  return { ...STUB_ANALYSIS._default, workflowId, _stub: true };
 }
 
 // --- Constants ---
@@ -167,53 +171,94 @@ function injectNavItem() {
   });
 }
 
-// --- Rendering ---
+// --- Rendering Helpers ---
 
 function formatCurrency(val) {
   return "$" + val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function trendIndicator(pct) {
-  if (pct > 1) return `<span class="tca-trend-up">↑ ${pct.toFixed(1)}%</span>`;
-  if (pct < -1) return `<span class="tca-trend-down">↓ ${Math.abs(pct).toFixed(1)}%</span>`;
-  return `<span class="tca-trend-flat">→ ${Math.abs(pct).toFixed(1)}%</span>`;
+function formatNumber(val) {
+  return val.toLocaleString("en-US");
 }
 
-function renderOverview() {
-  const namespaces = getTopNamespaces();
+function trendBadge(trend) {
+  if (trend === "up") return `<span class="tca-trend-up">↑ Up</span>`;
+  if (trend === "down") return `<span class="tca-trend-down">↓ Down</span>`;
+  return `<span class="tca-trend-flat">→ Flat</span>`;
+}
+
+function severityBadge(severity) {
+  const colors = { high: "#ef4444", medium: "#f59e0b", low: "#6b7280" };
+  const color = colors[severity] || "#6b7280";
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:9999px;font-size:0.75rem;font-weight:600;color:white;background:${color};text-transform:uppercase;">${severity}</span>`;
+}
+
+function stubBanner() {
+  return `<div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 0.375rem; padding: 0.5rem 0.75rem; margin-bottom: 1.5rem; font-size: 0.8rem; color: #92400e; display: flex; align-items: center; gap: 0.5rem;">
+    <span style="font-size: 1rem;">⚠</span> Showing sample data — backend not connected (${API_BASE})
+  </div>`;
+}
+
+function renderLoading(main) {
+  main.innerHTML = `
+    <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
+      <div style="color: #94a3b8; font-size: 0.875rem;">Loading...</div>
+    </div>`;
+}
+
+function renderError(main, message) {
+  main.innerHTML = `
+    <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
+      <div style="color: #f87171; font-size: 0.875rem;">Error: ${message}</div>
+    </div>`;
+}
+
+function backButton(label, hash) {
+  return `<button class="tca-back-btn" onclick="window.location.hash='${hash}'">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    ${label}
+  </button>`;
+}
+
+// --- Screen 1: Top Namespaces ---
+
+async function renderOverview() {
   const main = document.getElementById("content");
   if (!main) return;
 
-  if (!isActive) {
-    savedMainContent = main.innerHTML;
-  }
+  if (!isActive) savedMainContent = main.innerHTML;
   isActive = true;
+  renderLoading(main);
+  updateNavHighlight(true);
 
-  const rows = namespaces
-    .map(
-      (ns, i) => `
-    <tr class="tca-clickable" data-ns="${ns.name}">
-      <td style="color: #94a3b8; font-weight: 500;">${i + 1}</td>
-      <td style="font-weight: 600; color: #1e293b;">${ns.name}</td>
-      <td style="color: #334155;">${formatCurrency(ns.cost)}</td>
-      <td>${trendIndicator(ns.trend_pct)}</td>
-      <td style="color: #64748b;">${ns.workflow_count} workflows</td>
-    </tr>`
-    )
-    .join("");
+  const result = await getTopNamespaces();
+  const namespaces = result.items;
+  const isStub = result._stub;
 
-  const totalCost = namespaces.reduce((s, ns) => s + ns.cost, 0);
+  const totalCost = namespaces.reduce((s, ns) => s + ns.estimatedCost, 0);
+  const topScore = namespaces.length > 0 ? namespaces[0].usageScore : 0;
+
+  const rows = namespaces.map((ns, i) => `
+    <tr class="tca-clickable" data-ns="${ns.namespace}">
+      <td style="color: #94a3b8; font-weight: 500;">${ns.rank || i + 1}</td>
+      <td style="font-weight: 600; color: #1e293b;">${ns.namespace}${ns.incomplete ? ' <span style="font-size:0.7rem;color:#f59e0b;font-weight:normal;">(incomplete)</span>' : ''}</td>
+      <td style="color: #334155;">${formatCurrency(ns.estimatedCost)}</td>
+      <td style="color: #64748b;">${formatNumber(Math.round(ns.usageScore))}</td>
+      <td>${trendBadge(ns.trend)}</td>
+    </tr>`).join("");
 
   main.innerHTML = `
     <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
       <div style="margin-bottom: 2rem;">
         <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; color: #f8fafc;">Cost Analyser</h1>
-        <p style="color: #94a3b8; font-size: 0.875rem;">Top 5 namespaces by usage — last 30 days</p>
+        <p style="color: #94a3b8; font-size: 0.875rem;">Top ${namespaces.length} namespaces by usage</p>
       </div>
+
+      ${isStub ? stubBanner() : ''}
 
       <div style="display: flex; gap: 1.5rem; margin-bottom: 2rem;">
         <div style="background: #f8fafc; border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1; color: #1e293b;">
-          <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Total Cost</div>
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Total Est. Cost</div>
           <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${formatCurrency(totalCost)}</div>
         </div>
         <div style="background: #f8fafc; border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1; color: #1e293b;">
@@ -221,8 +266,8 @@ function renderOverview() {
           <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${namespaces.length}</div>
         </div>
         <div style="background: #f8fafc; border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1; color: #1e293b;">
-          <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Total Workflows</div>
-          <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${namespaces.reduce((s, ns) => s + ns.workflow_count, 0)}</div>
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Top Usage Score</div>
+          <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${formatNumber(Math.round(topScore))}</div>
         </div>
       </div>
 
@@ -232,104 +277,214 @@ function renderOverview() {
             <tr>
               <th style="width: 3rem;">#</th>
               <th>Namespace</th>
-              <th>Cost</th>
+              <th>Est. Cost</th>
+              <th>Usage Score</th>
               <th>Trend</th>
-              <th>Workflows</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
-    </div>
-  `;
+    </div>`;
 
   main.querySelectorAll("tr.tca-clickable").forEach((row) => {
     row.addEventListener("click", () => {
-      const ns = row.getAttribute("data-ns");
-      window.location.hash = `#/cost-analyser/namespace/${ns}`;
+      window.location.hash = `#/cost-analyser/namespace/${encodeURIComponent(row.getAttribute("data-ns"))}`;
     });
   });
-
-  updateNavHighlight(true);
 }
 
-function renderDetail(nsName) {
-  const detail = getNamespaceDetail(nsName);
+// --- Screen 2: Top Workflow Types in Namespace ---
+
+async function renderWorkflowTypes(namespace) {
   const main = document.getElementById("content");
-  if (!main || !detail) return;
+  if (!main) return;
 
-  if (!isActive) {
-    savedMainContent = main.innerHTML;
-  }
+  if (!isActive) savedMainContent = main.innerHTML;
   isActive = true;
+  renderLoading(main);
+  updateNavHighlight(true);
 
-  const maxDailyCost = Math.max(...detail.daily_costs);
-  const bars = detail.daily_costs
-    .map(
-      (cost, i) =>
-        `<div class="tca-bar" style="height: ${(cost / maxDailyCost) * 100}%;" title="Day ${i + 1}: ${formatCurrency(cost)}"></div>`
-    )
-    .join("");
+  const data = await getWorkflowTypes(namespace);
+  const items = data.items || [];
+  const isStub = data._stub;
 
-  const workflowRows = detail.workflows
-    .map(
-      (wf) => `
-    <tr>
-      <td style="font-weight: 500; color: #1e293b;">${wf.name}</td>
-      <td style="color: #334155;">${formatCurrency(wf.cost)}</td>
-      <td style="color: #64748b;">${wf.executions.toLocaleString()}</td>
-      <td>
-        <div style="background: #e2e8f0; border-radius: 9999px; height: 6px; width: 100%; max-width: 200px;">
-          <div style="background: #6366f1; border-radius: 9999px; height: 100%; width: ${(wf.cost / detail.total_cost) * 100}%;"></div>
-        </div>
-      </td>
-    </tr>`
-    )
-    .join("");
+  const rows = items.map((wt, i) => `
+    <tr class="tca-clickable" data-wt="${wt.workflowType}" data-ns="${namespace}">
+      <td style="color: #94a3b8; font-weight: 500;">${i + 1}</td>
+      <td style="font-weight: 600; color: #1e293b;">${wt.workflowType}</td>
+      <td style="color: #334155;">${formatCurrency(wt.estimatedCost)}</td>
+      <td style="color: #64748b;">${formatNumber(Math.round(wt.usageScore))}</td>
+      <td style="color: #64748b;">${formatNumber(wt.executions)}</td>
+      <td style="color: #64748b;">${formatNumber(wt.signals)}</td>
+      <td style="color: #64748b;">${formatNumber(wt.activities)}</td>
+    </tr>`).join("");
 
   main.innerHTML = `
     <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
-      <button class="tca-back-btn" id="tca-back">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        Back to overview
-      </button>
-
+      ${backButton("Back to namespaces", "#/cost-analyser")}
       <div style="margin: 1.5rem 0;">
-        <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; color: #f8fafc;">${nsName}</h1>
-        <p style="color: #94a3b8; font-size: 0.875rem;">${detail.period} &middot; ${formatCurrency(detail.total_cost)} total</p>
+        <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; color: #f8fafc;">${namespace}</h1>
+        <p style="color: #94a3b8; font-size: 0.875rem;">Top ${items.length} workflow types by usage</p>
       </div>
 
-      <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 2rem; color: #1e293b;">
-        <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 1rem;">Daily Cost Trend</div>
-        <div class="tca-bar-chart">${bars}</div>
-        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;">
-          <span>Day 1</span>
-          <span>Day ${detail.daily_costs.length}</span>
-        </div>
-      </div>
+      ${isStub ? stubBanner() : ''}
 
       <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; overflow: hidden; color: #1e293b;">
-        <div style="padding: 1rem 1rem 0; font-size: 0.875rem; font-weight: 600;">Workflow Breakdown</div>
         <table class="tca-table">
           <thead>
             <tr>
-              <th>Workflow</th>
-              <th>Cost</th>
+              <th style="width: 3rem;">#</th>
+              <th>Workflow Type</th>
+              <th>Est. Cost</th>
+              <th>Usage Score</th>
               <th>Executions</th>
-              <th>Share</th>
+              <th>Signals</th>
+              <th>Activities</th>
             </tr>
           </thead>
-          <tbody>${workflowRows}</tbody>
+          <tbody>${rows}</tbody>
         </table>
       </div>
-    </div>
-  `;
+    </div>`;
 
-  document.getElementById("tca-back").addEventListener("click", () => {
-    window.location.hash = "#/cost-analyser";
+  main.querySelectorAll("tr.tca-clickable").forEach((row) => {
+    row.addEventListener("click", () => {
+      const wt = row.getAttribute("data-wt");
+      const ns = row.getAttribute("data-ns");
+      window.location.hash = `#/cost-analyser/namespace/${encodeURIComponent(ns)}/workflow-type/${encodeURIComponent(wt)}`;
+    });
   });
+}
 
+// --- Screen 3: Workflow Type Usage ---
+
+async function renderWorkflowUsage(namespace, workflowType) {
+  const main = document.getElementById("content");
+  if (!main) return;
+
+  if (!isActive) savedMainContent = main.innerHTML;
+  isActive = true;
+  renderLoading(main);
   updateNavHighlight(true);
+
+  const data = await getWorkflowUsage(namespace, workflowType);
+  const s = data.summary;
+  const isStub = data._stub;
+
+  const totalStorageCost = s.storage.active.cost + s.storage.retained.cost;
+  const activePercent = totalStorageCost > 0 ? (s.storage.active.cost / totalStorageCost) * 100 : 50;
+
+  main.innerHTML = `
+    <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
+      ${backButton("Back to workflow types", `#/cost-analyser/namespace/${encodeURIComponent(namespace)}`)}
+      <div style="margin: 1.5rem 0;">
+        <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; color: #f8fafc;">${workflowType}</h1>
+        <p style="color: #94a3b8; font-size: 0.875rem;">${namespace}</p>
+      </div>
+
+      ${isStub ? stubBanner() : ''}
+
+      <div style="display: flex; gap: 1.5rem; margin-bottom: 2rem;">
+        <div style="background: #f8fafc; border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1; color: #1e293b;">
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Executions</div>
+          <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${formatNumber(s.executions)}</div>
+        </div>
+        <div style="background: #f8fafc; border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1; color: #1e293b;">
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Billable Actions</div>
+          <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${formatNumber(s.billableActions)}</div>
+        </div>
+        <div style="background: #f8fafc; border-radius: 0.5rem; padding: 1.25rem 1.5rem; flex: 1; color: #1e293b;">
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Total Storage Cost</div>
+          <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${formatCurrency(totalStorageCost)}</div>
+        </div>
+      </div>
+
+      <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 2rem; color: #1e293b;">
+        <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 1rem;">Storage Breakdown</div>
+        <div style="display: flex; gap: 2rem; margin-bottom: 1rem;">
+          <div style="flex: 1;">
+            <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.25rem;">Active Storage</div>
+            <div style="font-size: 1.125rem; font-weight: 600;">${formatCurrency(s.storage.active.cost)}</div>
+            <div style="font-size: 0.75rem; color: #64748b;">${formatNumber(s.storage.active.usage)} units</div>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.25rem;">Retained Storage</div>
+            <div style="font-size: 1.125rem; font-weight: 600;">${formatCurrency(s.storage.retained.cost)}</div>
+            <div style="font-size: 0.75rem; color: #64748b;">${formatNumber(s.storage.retained.usage)} units</div>
+          </div>
+        </div>
+        <div style="background: #e2e8f0; border-radius: 9999px; height: 8px; width: 100%;">
+          <div style="background: #6366f1; border-radius: 9999px; height: 100%; width: ${activePercent}%;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #94a3b8; margin-top: 0.25rem;">
+          <span>Active</span>
+          <span>Retained</span>
+        </div>
+      </div>
+
+      <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1.5rem; color: #1e293b;">
+        <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 1rem;">History Events</div>
+        <div style="display: flex; gap: 2rem;">
+          <div style="flex: 1;">
+            <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.25rem;">Average</div>
+            <div style="font-size: 1.125rem; font-weight: 600;">${formatNumber(s.avgHistoryEvents)}</div>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.25rem;">P95</div>
+            <div style="font-size: 1.125rem; font-weight: 600;">${formatNumber(s.p95HistoryEvents)}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// --- Screen 4: Workflow Analysis ---
+
+async function renderWorkflowAnalysis(workflowId) {
+  const main = document.getElementById("content");
+  if (!main) return;
+
+  if (!isActive) savedMainContent = main.innerHTML;
+  isActive = true;
+  renderLoading(main);
+  updateNavHighlight(true);
+
+  const data = await getWorkflowAnalysis(workflowId);
+  const isStub = data._stub;
+
+  const findingsHTML = (data.signals || []).map((s) => `
+    <div style="padding: 1rem; border-bottom: 1px solid #f1f5f9;">
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+        ${severityBadge(s.severity)}
+        <span style="font-weight: 600; color: #1e293b;">${s.type.replace(/_/g, " ")}</span>
+      </div>
+      <div style="font-size: 0.875rem; color: #64748b;">${s.evidence}</div>
+    </div>`).join("");
+
+  const recsHTML = (data.recommendations || []).map((r) => `
+    <li style="padding: 0.5rem 0; color: #334155; font-size: 0.875rem;">${r}</li>`).join("");
+
+  main.innerHTML = `
+    <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
+      ${backButton("Back", "#/cost-analyser")}
+      <div style="margin: 1.5rem 0;">
+        <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; color: #f8fafc;">Workflow Analysis</h1>
+        <p style="color: #94a3b8; font-size: 0.875rem;">${data.workflowId}${data.workflowRunId ? ` · ${data.workflowRunId}` : ""}</p>
+      </div>
+
+      ${isStub ? stubBanner() : ''}
+
+      <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; overflow: hidden; margin-bottom: 2rem; color: #1e293b;">
+        <div style="padding: 1rem 1rem 0; font-size: 0.875rem; font-weight: 600;">Findings</div>
+        ${findingsHTML || '<div style="padding: 1rem; color: #94a3b8;">No findings</div>'}
+      </div>
+
+      <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1.5rem; color: #1e293b;">
+        <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">Recommendations</div>
+        <ul style="margin: 0; padding-left: 1.25rem;">${recsHTML || '<li style="color: #94a3b8;">No recommendations</li>'}</ul>
+      </div>
+    </div>`;
 }
 
 // --- Navigation ---
@@ -363,9 +518,15 @@ function handleRoute() {
 
   if (hash === "#/cost-analyser") {
     renderOverview();
-  } else if (hash.startsWith("#/cost-analyser/namespace/")) {
-    const nsName = hash.replace("#/cost-analyser/namespace/", "");
-    renderDetail(decodeURIComponent(nsName));
+  } else if (hash.match(/^#\/cost-analyser\/namespace\/[^/]+\/workflow-type\/[^/]+$/)) {
+    const parts = hash.replace("#/cost-analyser/namespace/", "").split("/workflow-type/");
+    renderWorkflowUsage(decodeURIComponent(parts[0]), decodeURIComponent(parts[1]));
+  } else if (hash.match(/^#\/cost-analyser\/namespace\/[^/]+$/)) {
+    const ns = hash.replace("#/cost-analyser/namespace/", "");
+    renderWorkflowTypes(decodeURIComponent(ns));
+  } else if (hash.match(/^#\/cost-analyser\/workflow\/[^/]+\/analyze$/)) {
+    const wfId = hash.replace("#/cost-analyser/workflow/", "").replace("/analyze", "");
+    renderWorkflowAnalysis(decodeURIComponent(wfId));
   } else if (isActive) {
     restoreOriginalContent();
   }
