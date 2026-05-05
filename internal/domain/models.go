@@ -14,7 +14,7 @@ type Analyzer interface {
 }
 
 type Optimizer interface {
-	AnalyzeWorkflow(ctx context.Context, workflowID string) (WorkflowAnalysis, error)
+	AnalyzeWorkflow(ctx context.Context, namespace string, workflowID string) (WorkflowAnalysis, error)
 }
 
 type StorageBreakdown struct {

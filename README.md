@@ -60,6 +60,7 @@ The compose service mounts `./.env` into the container at `/app/.env` and maps h
 ## Environment
 
 Temporal Cloud usage is accessed through the experimental Temporal Cloud Go SDK and is intentionally limited to the Cloud Usage API summary records from `temporal/api/cloud/usage/v1/message.proto`.
+Workflow execution analysis resolves the namespace's workflow gRPC endpoint from Cloud Ops namespace metadata before calling the Temporal Workflow Service API.
 
 Supported `.env` variables:
 
@@ -69,7 +70,9 @@ Supported `.env` variables:
 - `TEMPORAL_CLOUD_API_VERSION`
 - `TEMPORAL_USAGE_PAGE_SIZE`
 
-Only `GET /namespaces?top=5` is backed by Temporal Cloud usage data today. Workflow-type drilldown and workflow execution analysis still return `501 Not Implemented` because the Usage API groups records by namespace only.
+Only `GET /namespaces?top=5` is backed by Temporal Cloud usage data today. Workflow-type drilldown still returns `501 Not Implemented` because the Usage API groups records by namespace only.
+
+`GET /workflows/{workflowId}/analyze?namespace={namespace}` fetches the latest completed run for that workflow ID in the namespace and returns heuristic optimization findings. The backend discovers the namespace workflow endpoint through the Cloud Ops API.
 
 ## API Surface
 
@@ -77,7 +80,7 @@ Only `GET /namespaces?top=5` is backed by Temporal Cloud usage data today. Workf
 - `GET /namespaces?top=5`
 - `GET /namespaces/{name}/workflow-types?top=5`
 - `GET /workflow-types/{workflowType}/usage?namespace={name}`
-- `GET /workflows/{workflowId}/analyze`
+- `GET /workflows/{workflowId}/analyze?namespace={namespace}`
 
 Run tests:
 

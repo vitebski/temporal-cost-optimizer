@@ -126,7 +126,13 @@ func (r *Router) handleWorkflowAnalysis(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	analysis, err := r.optimizer.AnalyzeWorkflow(req.Context(), workflowID)
+	namespace := req.URL.Query().Get("namespace")
+	if namespace == "" {
+		writeError(w, http.StatusBadRequest, "missing_namespace", "Query parameter namespace is required.")
+		return
+	}
+
+	analysis, err := r.optimizer.AnalyzeWorkflow(req.Context(), namespace, workflowID)
 	if err != nil {
 		writeServiceError(w, err)
 		return

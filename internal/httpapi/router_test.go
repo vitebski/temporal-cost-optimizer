@@ -105,13 +105,16 @@ func TestRouterReturnsWorkflowAnalysis(t *testing.T) {
 	optimizer := &fakeOptimizer{}
 	handler := NewRouter(&fakeAnalyzer{}, optimizer)
 
-	req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/analyze", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/analyze?namespace=payments-prod", nil)
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if optimizer.namespace != "payments-prod" {
+		t.Fatalf("namespace = %q, want payments-prod", optimizer.namespace)
 	}
 	if optimizer.workflowID != "wf-123" {
 		t.Fatalf("workflow ID = %q, want wf-123", optimizer.workflowID)
@@ -123,6 +126,31 @@ func TestRouterReturnsWorkflowAnalysis(t *testing.T) {
 	}
 	if body.WorkflowID != "wf-123" {
 		t.Fatalf("workflow ID in response = %q, want wf-123", body.WorkflowID)
+	}
+}
+
+func TestRouterRequiresNamespaceForWorkflowAnalysis(t *testing.T) {
+	handler := NewRouter(&fakeAnalyzer{}, &fakeOptimizer{})
+
+	req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/analyze", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+
+	var body struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Error.Code != "missing_namespace" {
+		t.Fatalf("error code = %q, want missing_namespace", body.Error.Code)
 	}
 }
 
@@ -157,7 +185,7 @@ func TestRouterMapsOptimizerNotImplementedTo501(t *testing.T) {
 	optimizer := &fakeOptimizer{err: domain.ErrNotImplemented}
 	handler := NewRouter(&fakeAnalyzer{}, optimizer)
 
-	req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/analyze", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/analyze?namespace=payments-prod", nil)
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -271,11 +299,13 @@ func (f *fakeAnalyzer) WorkflowUsage(_ context.Context, namespace string, workfl
 }
 
 type fakeOptimizer struct {
+	namespace  string
 	workflowID string
 	err        error
 }
 
-func (f *fakeOptimizer) AnalyzeWorkflow(_ context.Context, workflowID string) (domain.WorkflowAnalysis, error) {
+func (f *fakeOptimizer) AnalyzeWorkflow(_ context.Context, namespace string, workflowID string) (domain.WorkflowAnalysis, error) {
+	f.namespace = namespace
 	f.workflowID = workflowID
 	if f.err != nil {
 		return domain.WorkflowAnalysis{}, f.err
