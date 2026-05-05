@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"temporal-cost-optimizer/internal/analyzer"
@@ -15,8 +14,16 @@ import (
 )
 
 func main() {
-	cfg := config.Load(os.LookupEnv)
-	temporalClient := temporalcloud.NewClient(cfg.Temporal)
+	cfg, err := config.LoadFile(".env")
+	if err != nil {
+		log.Fatalf("failed to load configuration: %v", err)
+	}
+
+	temporalClient, err := temporalcloud.NewClient(cfg.Temporal)
+	if err != nil {
+		log.Fatalf("failed to create Temporal Cloud client: %v", err)
+	}
+	defer temporalClient.Close()
 
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,

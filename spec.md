@@ -183,6 +183,12 @@ sequenceDiagram
 
 ## 7. Backend Services
 
+### MVP implementation constraint
+
+The initial Go backend supports only the Temporal Cloud Usage API surface exposed by the Temporal Cloud Go SDK and `temporal/api/cloud/usage/v1/message.proto`. That API returns usage summaries grouped by namespace, so namespace ranking can be backed by real Cloud usage data first. Workflow-type drill-down and workflow execution analysis remain API placeholders until additional Temporal Cloud or workflow history sources are introduced.
+
+When Temporal marks any usage summary as incomplete, the namespace summary includes `incomplete: true` so the extension can label the ranking as still settling.
+
 ## 7.1 Cost Analyzer Backend
 
 ### Purpose

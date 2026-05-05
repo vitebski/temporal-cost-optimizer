@@ -34,6 +34,7 @@ type NamespaceSummary struct {
 	EstimatedCost float64          `json:"estimatedCost"`
 	Storage       StorageBreakdown `json:"storage"`
 	Trend         string           `json:"trend"`
+	Incomplete    bool             `json:"incomplete"`
 }
 
 type WorkflowTypeSummary struct {
