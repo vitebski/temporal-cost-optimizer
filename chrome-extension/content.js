@@ -404,6 +404,7 @@ function init() {
     }
   });
   observer.observe(document.body, { childList: true, subtree: true });
+  setTimeout(() => observer.disconnect(), 10000);
 }
 
 init();
