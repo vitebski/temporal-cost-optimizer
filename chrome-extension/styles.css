@@ -1,21 +1,32 @@
 .tca-table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
+  background: rgb(0, 0, 0);
+  border: 0.75px solid rgb(39, 56, 96);
+}
+
+.tca-table thead tr {
+  background: rgb(39, 56, 96);
+  height: 36px;
 }
 
 .tca-table th {
   text-align: left;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   font-weight: 500;
   font-size: 0.875rem;
+  color: #f8fafc;
+}
+
+.tca-table td {
+  padding: 0.5rem 0.75rem;
   color: #f8fafc;
   border-bottom: 0.75px solid rgb(39, 56, 96);
 }
 
-.tca-table td {
-  padding: 0.75rem 1rem;
-  color: #f8fafc;
-  border-bottom: 0.75px solid rgba(39, 56, 96, 0.5);
+.tca-table tbody tr:nth-child(odd) {
+  background: rgb(20, 20, 20);
 }
 
 .tca-table tr.tca-clickable {
@@ -24,7 +35,7 @@
 }
 
 .tca-table tr.tca-clickable:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .tca-trend-up { color: #ef4444; }

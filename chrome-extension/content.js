@@ -281,8 +281,7 @@ async function renderOverview() {
         </div>
       </div>
 
-      <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; overflow: hidden; color: #f8fafc;">
-        <table class="tca-table">
+      <table class="tca-table">
           <thead>
             <tr>
               <th style="width: 3rem;">#</th>
@@ -294,7 +293,6 @@ async function renderOverview() {
           </thead>
           <tbody>${rows}</tbody>
         </table>
-      </div>
     </div>`;
 
   main.querySelectorAll("tr.tca-clickable").forEach((row) => {
@@ -338,8 +336,7 @@ async function renderWorkflowTypes(namespace) {
 
       ${isStub ? stubBanner() : ''}
 
-      <div style="background: rgba(255, 255, 255, 0.05); border: 0.75px solid rgb(39, 56, 96); border-radius: 0.5rem; overflow: hidden; color: #f8fafc;">
-        <table class="tca-table">
+      <table class="tca-table">
           <thead>
             <tr>
               <th style="width: 3rem;">#</th>
@@ -353,7 +350,6 @@ async function renderWorkflowTypes(namespace) {
           </thead>
           <tbody>${rows}</tbody>
         </table>
-      </div>
     </div>`;
 
   main.querySelectorAll("tr.tca-clickable").forEach((row) => {
