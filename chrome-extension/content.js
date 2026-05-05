@@ -200,14 +200,14 @@ function stubBanner() {
 
 function renderLoading(main) {
   main.innerHTML = `
-    <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
+    <div style="padding: 2rem;">
       <div style="color: #94a3b8; font-size: 0.875rem;">Loading...</div>
     </div>`;
 }
 
 function renderError(main, message) {
   main.innerHTML = `
-    <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
+    <div style="padding: 2rem;">
       <div style="color: #f87171; font-size: 0.875rem;">Error: ${message}</div>
     </div>`;
 }
@@ -258,7 +258,7 @@ async function renderOverview() {
     </tr>`).join("");
 
   main.innerHTML = `
-    <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
+    <div style="padding: 2rem;">
       <div style="margin-bottom: 2rem;">
         <h1 style="font-size: 1.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #f8fafc;">Cost Analyser</h1>
         <p style="color: #94a3b8; font-size: 0.875rem;">Top ${namespaces.length} namespaces by usage</p>
@@ -327,7 +327,7 @@ async function renderWorkflowTypes(namespace) {
     </tr>`).join("");
 
   main.innerHTML = `
-    <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
+    <div style="padding: 2rem;">
       ${backButton("Back to namespaces", "#/cost-analyser")}
       <div style="margin: 1.5rem 0;">
         <h1 style="font-size: 1.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #f8fafc;">${namespace}</h1>
@@ -378,7 +378,7 @@ async function renderWorkflowUsage(namespace, workflowType) {
   const activePercent = totalStorageCost > 0 ? (s.storage.active.cost / totalStorageCost) * 100 : 50;
 
   main.innerHTML = `
-    <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
+    <div style="padding: 2rem;">
       ${backButton("Back to workflow types", `#/cost-analyser/namespace/${encodeURIComponent(namespace)}`)}
       <div style="margin: 1.5rem 0;">
         <h1 style="font-size: 1.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #f8fafc;">${workflowType}</h1>
@@ -466,7 +466,7 @@ async function renderWorkflowAnalysis(workflowId) {
     <li style="padding: 0.5rem 0; color: #cbd5e1; font-size: 0.875rem;">${r}</li>`).join("");
 
   main.innerHTML = `
-    <div style="max-width: 900px; margin: 0 auto; padding: 2rem;">
+    <div style="padding: 2rem;">
       ${backButton("Back", "#/cost-analyser")}
       <div style="margin: 1.5rem 0;">
         <h1 style="font-size: 1.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #f8fafc;">Workflow Analysis</h1>
