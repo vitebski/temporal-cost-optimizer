@@ -438,6 +438,13 @@ async function renderWorkflowUsage(namespace, workflowType) {
           </div>
         </div>
       </div>
+
+      <div style="margin-top: 2rem;">
+        <a class="tca-optimize-btn" href="#/cost-analyser/workflow/${encodeURIComponent(workflowType)}/analyze">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Optimize
+        </a>
+      </div>
     </div>`;
 }
 
@@ -467,9 +474,9 @@ async function renderWorkflowAnalysis(workflowId) {
 
   main.innerHTML = `
     <div style="padding: 2rem;">
-      ${backButton("Back", "#/cost-analyser")}
+      ${backButton("Back to overview", "#/cost-analyser")}
       <div style="margin: 1.5rem 0;">
-        <h1 style="font-size: 1.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #f8fafc;">Workflow Analysis</h1>
+        <h1 style="font-size: 1.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #f8fafc;">Optimization</h1>
         <p style="color: #94a3b8; font-size: 0.875rem;">${data.workflowId}${data.workflowRunId ? ` · ${data.workflowRunId}` : ""}</p>
       </div>
 

@@ -79,6 +79,24 @@
   text-decoration: underline;
 }
 
+.tca-optimize-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: #6366f1;
+  color: #f8fafc;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  transition: background-color 0.15s;
+}
+
+.tca-optimize-btn:hover {
+  background: #4f46e5;
+}
+
 #content.tca-active > *:not(#tca-container) {
   display: none !important;
 }
