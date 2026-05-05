@@ -166,7 +166,7 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		return
 	}
 
-	writeError(w, http.StatusInternalServerError, "internal_error", "Internal server error.")
+	writeError(w, http.StatusBadGateway, "temporal_cloud_error", err.Error())
 }
 
 func writeError(w http.ResponseWriter, status int, code string, message string) {

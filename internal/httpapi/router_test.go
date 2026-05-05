@@ -3,8 +3,10 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"temporal-cost-optimizer/internal/domain"
@@ -174,6 +176,36 @@ func TestRouterMapsOptimizerNotImplementedTo501(t *testing.T) {
 	}
 	if body.Error.Code != "not_implemented" {
 		t.Fatalf("error code = %q, want not_implemented", body.Error.Code)
+	}
+}
+
+func TestRouterReturnsUpstreamTemporalErrorDetails(t *testing.T) {
+	analyzer := &fakeAnalyzer{err: errors.New("rpc error: code = PermissionDenied desc = missing usage permission")}
+	handler := NewRouter(analyzer, &fakeOptimizer{})
+
+	req := httptest.NewRequest(http.MethodGet, "/namespaces", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadGateway)
+	}
+
+	var body struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Error.Code != "temporal_cloud_error" {
+		t.Fatalf("error code = %q, want temporal_cloud_error", body.Error.Code)
+	}
+	if !strings.Contains(body.Error.Message, "PermissionDenied") {
+		t.Fatalf("error message = %q, want upstream detail", body.Error.Message)
 	}
 }
 
