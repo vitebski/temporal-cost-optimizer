@@ -1,8 +1,10 @@
 package temporalcloud
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +18,7 @@ import (
 	cloudnamespace "go.temporal.io/cloud-sdk/api/namespace/v1"
 	usage "go.temporal.io/cloud-sdk/api/usage/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"temporal-cost-optimizer/internal/config"
@@ -73,6 +76,21 @@ func TestGetUsageUsesConfiguredPageSize(t *testing.T) {
 	}
 }
 
+func TestKeyFingerprintRedactsSecret(t *testing.T) {
+	first := keyFingerprint("secret-token")
+	second := keyFingerprint("secret-token")
+
+	if first == "" || first == "secret-token" {
+		t.Fatalf("fingerprint = %q, want non-secret digest", first)
+	}
+	if first != second {
+		t.Fatalf("fingerprint changed between calls: %q then %q", first, second)
+	}
+	if got := keyFingerprint(""); got != "missing" {
+		t.Fatalf("empty fingerprint = %q, want missing", got)
+	}
+}
+
 func TestLastCompletedWorkflowHistoryListsCompletedExecutionsByNamespace(t *testing.T) {
 	closeTime := time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC)
 	workflowFake := &fakeWorkflowService{
@@ -89,7 +107,7 @@ func TestLastCompletedWorkflowHistoryListsCompletedExecutionsByNamespace(t *test
 	}
 	cloudFake := &fakeCloudService{namespaceResponse: namespaceResponse("payments-prod.namespace.tmprl.cloud:7233")}
 	workflowFactory := &fakeWorkflowServiceFactory{service: workflowFake}
-	client := newClientForServices(config.TemporalConfig{}, cloudFake, workflowFactory, nil)
+	client := newClientForServices(config.TemporalConfig{NamespaceAPIKey: "namespace-secret"}, nil, cloudFake, workflowFactory, nil)
 
 	workflowHistory, err := client.LastCompletedWorkflowHistory(context.Background(), "payments-prod", "wf-123")
 	if err != nil {
@@ -101,6 +119,9 @@ func TestLastCompletedWorkflowHistoryListsCompletedExecutionsByNamespace(t *test
 	}
 	if workflowFactory.endpoint != "payments-prod.namespace.tmprl.cloud:7233" {
 		t.Fatalf("workflow endpoint = %q, want payments-prod.namespace.tmprl.cloud:7233", workflowFactory.endpoint)
+	}
+	if workflowFactory.config.NamespaceAPIKey != "namespace-secret" {
+		t.Fatalf("workflow service namespace API key = %q, want namespace-secret", workflowFactory.config.NamespaceAPIKey)
 	}
 	if workflowHistory.Namespace != "payments-prod" {
 		t.Fatalf("namespace = %q, want payments-prod", workflowHistory.Namespace)
@@ -126,6 +147,9 @@ func TestLastCompletedWorkflowHistoryListsCompletedExecutionsByNamespace(t *test
 	if !strings.Contains(workflowFake.listRequests[0].GetQuery(), `ExecutionStatus = "Completed"`) {
 		t.Fatalf("list query = %q, want completed status filter", workflowFake.listRequests[0].GetQuery())
 	}
+	if got := workflowFake.listMetadata[0].Get("temporal-namespace"); len(got) != 1 || got[0] != "payments-prod" {
+		t.Fatalf("list temporal-namespace metadata = %v, want payments-prod", got)
+	}
 	if workflowFake.historyRequests[0].GetNamespace() != "payments-prod" {
 		t.Fatalf("history namespace = %q, want payments-prod", workflowFake.historyRequests[0].GetNamespace())
 	}
@@ -137,6 +161,9 @@ func TestLastCompletedWorkflowHistoryListsCompletedExecutionsByNamespace(t *test
 	}
 	if workflowFake.historyRequests[0].GetMaximumPageSize() != defaultHistoryPageSize {
 		t.Fatalf("history page size = %d, want %d", workflowFake.historyRequests[0].GetMaximumPageSize(), defaultHistoryPageSize)
+	}
+	if got := workflowFake.historyMetadata[0].Get("temporal-namespace"); len(got) != 1 || got[0] != "payments-prod" {
+		t.Fatalf("history temporal-namespace metadata = %v, want payments-prod", got)
 	}
 }
 
@@ -154,7 +181,7 @@ func TestLastCompletedWorkflowHistorySelectsMostRecentCompletedRun(t *testing.T)
 			historyResponse(historyEvent(1), nil),
 		},
 	}
-	client := newClientForServices(config.TemporalConfig{}, &fakeCloudService{namespaceResponse: namespaceResponse("payments-prod.namespace.tmprl.cloud:7233")}, &fakeWorkflowServiceFactory{service: workflowFake}, nil)
+	client := newClientForServices(config.TemporalConfig{}, nil, &fakeCloudService{namespaceResponse: namespaceResponse("payments-prod.namespace.tmprl.cloud:7233")}, &fakeWorkflowServiceFactory{service: workflowFake}, nil)
 
 	workflowHistory, err := client.LastCompletedWorkflowHistory(context.Background(), "payments-prod", "wf-123")
 	if err != nil {
@@ -180,7 +207,7 @@ func TestLastCompletedWorkflowHistoryFetchesAllHistoryPages(t *testing.T) {
 			historyResponse(historyEvent(2), nil),
 		},
 	}
-	client := newClientForServices(config.TemporalConfig{}, &fakeCloudService{namespaceResponse: namespaceResponse("payments-prod.namespace.tmprl.cloud:7233")}, &fakeWorkflowServiceFactory{service: workflowFake}, nil)
+	client := newClientForServices(config.TemporalConfig{}, nil, &fakeCloudService{namespaceResponse: namespaceResponse("payments-prod.namespace.tmprl.cloud:7233")}, &fakeWorkflowServiceFactory{service: workflowFake}, nil)
 
 	workflowHistory, err := client.LastCompletedWorkflowHistory(context.Background(), "payments-prod", "wf-123")
 	if err != nil {
@@ -207,13 +234,47 @@ func TestLastCompletedWorkflowHistoryReturnsNotImplementedWithoutNamespaceEndpoi
 	}
 }
 
+func TestLastCompletedWorkflowHistoryWrapsNamespaceLookupErrors(t *testing.T) {
+	client := newClientForServices(config.TemporalConfig{}, nil, &fakeCloudService{namespaceErr: errors.New("request unauthorized")}, &fakeWorkflowServiceFactory{}, nil)
+
+	_, err := client.LastCompletedWorkflowHistory(context.Background(), "payments-prod", "wf-123")
+	if err == nil {
+		t.Fatal("error = nil, want namespace lookup error")
+	}
+	if !strings.Contains(err.Error(), `get namespace "payments-prod" from Cloud Ops`) {
+		t.Fatalf("error = %q, want Cloud Ops namespace lookup context", err.Error())
+	}
+}
+
+func TestLastCompletedWorkflowHistoryWrapsWorkflowListErrors(t *testing.T) {
+	var logs bytes.Buffer
+	restore := captureLogs(&logs)
+	defer restore()
+
+	workflowFake := &fakeWorkflowService{listErr: errors.New("request unauthorized")}
+	client := newClientForServices(config.TemporalConfig{}, nil, &fakeCloudService{namespaceResponse: namespaceResponse("payments-prod.namespace.tmprl.cloud:7233")}, &fakeWorkflowServiceFactory{service: workflowFake}, nil)
+
+	_, err := client.LastCompletedWorkflowHistory(context.Background(), "payments-prod", "wf-123")
+	if err == nil {
+		t.Fatal("error = nil, want workflow list error")
+	}
+	if !strings.Contains(err.Error(), `list completed workflow executions for namespace "payments-prod" workflow "wf-123"`) {
+		t.Fatalf("error = %q, want workflow list context", err.Error())
+	}
+
+	got := logs.String()
+	if !strings.Contains(got, `temporal_workflow_list_error namespace="payments-prod" workflow_id="wf-123"`) {
+		t.Fatalf("logs = %q, want workflow list error context", got)
+	}
+}
+
 func TestLastCompletedWorkflowHistoryReturnsErrorWhenNoCompletedRunExists(t *testing.T) {
 	workflowFake := &fakeWorkflowService{
 		listResponses: []*workflowservice.ListWorkflowExecutionsResponse{
 			{},
 		},
 	}
-	client := newClientForServices(config.TemporalConfig{}, &fakeCloudService{namespaceResponse: namespaceResponse("payments-prod.namespace.tmprl.cloud:7233")}, &fakeWorkflowServiceFactory{service: workflowFake}, nil)
+	client := newClientForServices(config.TemporalConfig{}, nil, &fakeCloudService{namespaceResponse: namespaceResponse("payments-prod.namespace.tmprl.cloud:7233")}, &fakeWorkflowServiceFactory{service: workflowFake}, nil)
 
 	_, err := client.LastCompletedWorkflowHistory(context.Background(), "payments-prod", "wf-123")
 	if err == nil {
@@ -247,12 +308,14 @@ func (f *fakeCloudService) GetNamespace(_ context.Context, req *cloudservice.Get
 
 type fakeWorkflowServiceFactory struct {
 	endpoint string
+	config   config.TemporalConfig
 	service  workflowService
 	closer   closer
 	err      error
 }
 
-func (f *fakeWorkflowServiceFactory) NewWorkflowService(_ config.TemporalConfig, endpoint string) (workflowService, closer, error) {
+func (f *fakeWorkflowServiceFactory) NewWorkflowService(cfg config.TemporalConfig, endpoint string) (workflowService, closer, error) {
+	f.config = cfg
 	f.endpoint = endpoint
 	if f.err != nil {
 		return nil, nil, f.err
@@ -262,15 +325,19 @@ func (f *fakeWorkflowServiceFactory) NewWorkflowService(_ config.TemporalConfig,
 
 type fakeWorkflowService struct {
 	listRequests     []*workflowservice.ListWorkflowExecutionsRequest
+	listMetadata     []metadata.MD
 	listResponses    []*workflowservice.ListWorkflowExecutionsResponse
 	listErr          error
 	historyRequests  []*workflowservice.GetWorkflowExecutionHistoryRequest
+	historyMetadata  []metadata.MD
 	historyResponses []*workflowservice.GetWorkflowExecutionHistoryResponse
 	historyErr       error
 }
 
-func (f *fakeWorkflowService) ListWorkflowExecutions(_ context.Context, req *workflowservice.ListWorkflowExecutionsRequest, _ ...grpc.CallOption) (*workflowservice.ListWorkflowExecutionsResponse, error) {
+func (f *fakeWorkflowService) ListWorkflowExecutions(ctx context.Context, req *workflowservice.ListWorkflowExecutionsRequest, _ ...grpc.CallOption) (*workflowservice.ListWorkflowExecutionsResponse, error) {
 	f.listRequests = append(f.listRequests, req)
+	md, _ := metadata.FromOutgoingContext(ctx)
+	f.listMetadata = append(f.listMetadata, md)
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
@@ -282,8 +349,10 @@ func (f *fakeWorkflowService) ListWorkflowExecutions(_ context.Context, req *wor
 	return resp, nil
 }
 
-func (f *fakeWorkflowService) GetWorkflowExecutionHistory(_ context.Context, req *workflowservice.GetWorkflowExecutionHistoryRequest, _ ...grpc.CallOption) (*workflowservice.GetWorkflowExecutionHistoryResponse, error) {
+func (f *fakeWorkflowService) GetWorkflowExecutionHistory(ctx context.Context, req *workflowservice.GetWorkflowExecutionHistoryRequest, _ ...grpc.CallOption) (*workflowservice.GetWorkflowExecutionHistoryResponse, error) {
 	f.historyRequests = append(f.historyRequests, req)
+	md, _ := metadata.FromOutgoingContext(ctx)
+	f.historyMetadata = append(f.historyMetadata, md)
 	if f.historyErr != nil {
 		return nil, f.historyErr
 	}
@@ -326,5 +395,16 @@ func namespaceResponse(grpcAddress string) *cloudservice.GetNamespaceResponse {
 				GrpcAddress: grpcAddress,
 			},
 		},
+	}
+}
+
+func captureLogs(buffer *bytes.Buffer) func() {
+	previousWriter := log.Writer()
+	previousFlags := log.Flags()
+	log.SetOutput(buffer)
+	log.SetFlags(0)
+	return func() {
+		log.SetOutput(previousWriter)
+		log.SetFlags(previousFlags)
 	}
 }

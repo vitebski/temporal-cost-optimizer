@@ -3,10 +3,12 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"temporal-cost-optimizer/internal/domain"
 )
@@ -24,34 +26,70 @@ func NewRouter(analyzer domain.Analyzer, optimizer domain.Optimizer) http.Handle
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	startedAt := time.Now()
+	rw := &loggingResponseWriter{ResponseWriter: w, status: http.StatusOK}
+	defer func() {
+		log.Printf(
+			"http_request method=%s path=%q query=%q remote_addr=%q status=%d duration=%s",
+			req.Method,
+			req.URL.Path,
+			req.URL.RawQuery,
+			req.RemoteAddr,
+			rw.status,
+			time.Since(startedAt),
+		)
+	}()
+
+	rw.Header().Set("Access-Control-Allow-Origin", "*")
+	rw.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	rw.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	if req.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusNoContent)
+		rw.WriteHeader(http.StatusNoContent)
 		return
 	}
 
 	if req.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only GET requests are supported.")
+		writeError(rw, http.StatusMethodNotAllowed, "method_not_allowed", "Only GET requests are supported.")
 		return
 	}
 
 	switch {
 	case req.URL.Path == "/healthz":
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		writeJSON(rw, http.StatusOK, map[string]string{"status": "ok"})
 	case req.URL.Path == "/namespaces":
-		r.handleTopNamespaces(w, req)
+		r.handleTopNamespaces(rw, req)
 	case strings.HasPrefix(req.URL.Path, "/namespaces/") && strings.HasSuffix(req.URL.Path, "/workflow-types"):
-		r.handleTopWorkflowTypes(w, req)
+		r.handleTopWorkflowTypes(rw, req)
 	case strings.HasPrefix(req.URL.Path, "/workflow-types/") && strings.HasSuffix(req.URL.Path, "/usage"):
-		r.handleWorkflowUsage(w, req)
-	case strings.HasPrefix(req.URL.Path, "/workflows/") && strings.HasSuffix(req.URL.Path, "/analyze"):
-		r.handleWorkflowAnalysis(w, req)
+		r.handleWorkflowUsage(rw, req)
+	case strings.HasPrefix(req.URL.Path, "/workflows/") && strings.HasSuffix(req.URL.Path, "/optimize"):
+		r.handleWorkflowAnalysis(rw, req)
 	default:
-		writeError(w, http.StatusNotFound, "not_found", "Route not found.")
+		writeError(rw, http.StatusNotFound, "not_found", "Route not found.")
 	}
+}
+
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	status      int
+	wroteHeader bool
+}
+
+func (w *loggingResponseWriter) WriteHeader(status int) {
+	if w.wroteHeader {
+		return
+	}
+	w.status = status
+	w.wroteHeader = true
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *loggingResponseWriter) Write(body []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(body)
 }
 
 func (r *Router) handleTopNamespaces(w http.ResponseWriter, req *http.Request) {
@@ -120,7 +158,7 @@ func (r *Router) handleWorkflowUsage(w http.ResponseWriter, req *http.Request) {
 }
 
 func (r *Router) handleWorkflowAnalysis(w http.ResponseWriter, req *http.Request) {
-	workflowID, ok := pathBetween(req.URL.Path, "/workflows/", "/analyze")
+	workflowID, ok := pathBetween(req.URL.Path, "/workflows/", "/optimize")
 	if !ok {
 		writeError(w, http.StatusNotFound, "not_found", "Route not found.")
 		return
@@ -177,10 +215,12 @@ func pathBetween(path string, prefix string, suffix string) (string, bool) {
 
 func writeServiceError(w http.ResponseWriter, err error) {
 	if errors.Is(err, domain.ErrNotImplemented) {
+		log.Printf("service_error code=not_implemented err=%q", err.Error())
 		writeError(w, http.StatusNotImplemented, "not_implemented", "Temporal Cloud integration is not implemented yet.")
 		return
 	}
 
+	log.Printf("service_error code=temporal_cloud_error err=%q", err.Error())
 	writeError(w, http.StatusBadGateway, "temporal_cloud_error", err.Error())
 }
 

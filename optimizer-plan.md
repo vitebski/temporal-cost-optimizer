@@ -13,7 +13,7 @@
 ## File Structure
 
 - Modify `internal/domain/models.go`: change the optimizer interface to accept namespace plus workflow ID.
-- Modify `internal/httpapi/router.go`: require `namespace` query parameter for `/workflows/{workflowId}/analyze`.
+- Modify `internal/httpapi/router.go`: require `namespace` query parameter for `/workflows/{workflowId}/optimize`.
 - Modify `internal/httpapi/router_test.go`: update optimizer fake and add namespace validation tests.
 - Modify `internal/config/config.go`: add Temporal workflow service host and history page size configuration.
 - Modify `internal/config/config_test.go`: cover the new config defaults and `.env` parsing.
@@ -49,7 +49,7 @@ In `internal/httpapi/router.go`, change `handleWorkflowAnalysis` so it validates
 
 ```go
 func (r *Router) handleWorkflowAnalysis(w http.ResponseWriter, req *http.Request) {
-	workflowID, ok := pathBetween(req.URL.Path, "/workflows/", "/analyze")
+	workflowID, ok := pathBetween(req.URL.Path, "/workflows/", "/optimize")
 	if !ok {
 		writeError(w, http.StatusNotFound, "not_found", "Route not found.")
 		return
@@ -76,7 +76,7 @@ func (r *Router) handleWorkflowAnalysis(w http.ResponseWriter, req *http.Request
 Update `TestRouterReturnsWorkflowAnalysis` to call:
 
 ```go
-req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/analyze?namespace=payments-prod", nil)
+req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/optimize?namespace=payments-prod", nil)
 ```
 
 Assert the fake received both values:
@@ -96,7 +96,7 @@ Add a missing namespace test:
 func TestRouterRequiresNamespaceForWorkflowAnalysis(t *testing.T) {
 	handler := NewRouter(&fakeAnalyzer{}, &fakeOptimizer{})
 
-	req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/analyze", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/optimize", nil)
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -262,7 +262,7 @@ func newWorkflowService(cfg config.TemporalConfig, endpoint string) (workflowSer
 	conn, err := grpc.NewClient(
 		endpoint,
 		grpc.WithTransportCredentials(credentials.NewTLS(nil)),
-		grpc.WithPerRPCCredentials(apiKeyCredentials{apiKey: cfg.APIKey}),
+		grpc.WithPerRPCCredentials(apiKeyCredentials{apiKey: cfg.NamespaceAPIKey}),
 		grpc.WithUserAgent("temporal-cost-optimizer"),
 	)
 	if err != nil {
@@ -511,7 +511,7 @@ Do not add a workflow host environment variable. The backend resolves it from Cl
 Clarify that workflow analysis requires `namespace`:
 
 ```markdown
-GET /workflows/{workflowId}/analyze?namespace={namespace}
+GET /workflows/{workflowId}/optimize?namespace={namespace}
 ```
 
 - [ ] **Step 2: Update current implementation status**
@@ -519,7 +519,7 @@ GET /workflows/{workflowId}/analyze?namespace={namespace}
 Replace the sentence saying workflow execution analysis returns `501` with:
 
 ```markdown
-`GET /workflows/{workflowId}/analyze?namespace={namespace}` fetches the latest completed run for that workflow ID in the namespace and returns heuristic optimization findings. The backend discovers the namespace workflow endpoint through the Cloud Ops API.
+`GET /workflows/{workflowId}/optimize?namespace={namespace}` fetches the latest completed run for that workflow ID in the namespace and returns heuristic optimization findings. The backend discovers the namespace workflow endpoint through the Cloud Ops API.
 ```
 
 - [ ] **Step 3: Run all tests**
@@ -543,7 +543,7 @@ ok  	temporal-cost-optimizer/internal/temporalcloud
 With a running backend and Temporal Cloud API credentials:
 
 ```sh
-curl "http://localhost:8080/workflows/wf-123/analyze?namespace=payments-prod"
+curl "http://localhost:8080/workflows/wf-123/optimize?namespace=payments-prod"
 ```
 
 Expected response shape:

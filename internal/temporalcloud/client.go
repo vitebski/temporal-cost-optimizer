@@ -2,7 +2,10 @@ package temporalcloud
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -15,6 +18,7 @@ import (
 	"go.temporal.io/cloud-sdk/cloudclient"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"temporal-cost-optimizer/internal/config"
@@ -69,16 +73,42 @@ type closer interface {
 	Close() error
 }
 
+type multiCloser []closer
+
+func (m multiCloser) Close() error {
+	var firstErr error
+	for _, closer := range m {
+		if closer == nil {
+			continue
+		}
+		if err := closer.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}
+
 type Client struct {
-	config          config.TemporalConfig
-	cloudService    cloudService
-	workflowFactory workflowServiceFactory
-	closer          closer
+	config                config.TemporalConfig
+	usageCloudService     cloudService
+	namespaceCloudService cloudService
+	workflowFactory       workflowServiceFactory
+	closer                closer
 }
 
 func NewClient(cfg config.TemporalConfig) (*Client, error) {
-	sdkClient, err := cloudclient.New(cloudclient.Options{
-		APIKey:     cfg.APIKey,
+	log.Printf(
+		"temporal_client_config usage_key_present=%t usage_key_fingerprint=%q namespace_key_present=%t namespace_key_fingerprint=%q api_host_port=%q api_version=%q",
+		cfg.UsageAPIKey != "",
+		keyFingerprint(cfg.UsageAPIKey),
+		cfg.NamespaceAPIKey != "",
+		keyFingerprint(cfg.NamespaceAPIKey),
+		cfg.APIHostPort,
+		cfg.APIVersion,
+	)
+
+	usageSDKClient, err := cloudclient.New(cloudclient.Options{
+		APIKey:     cfg.UsageAPIKey,
 		HostPort:   cfg.APIHostPort,
 		APIVersion: cfg.APIVersion,
 		UserAgent:  "temporal-cost-optimizer",
@@ -87,27 +117,52 @@ func NewClient(cfg config.TemporalConfig) (*Client, error) {
 		return nil, err
 	}
 
-	return newClientForServices(cfg, sdkClient.CloudService(), workflowServiceFactoryFunc(newWorkflowService), sdkClient), nil
+	namespaceSDKClient, err := cloudclient.New(cloudclient.Options{
+		APIKey:     cfg.NamespaceAPIKey,
+		HostPort:   cfg.APIHostPort,
+		APIVersion: cfg.APIVersion,
+		UserAgent:  "temporal-cost-optimizer",
+	})
+	if err != nil {
+		_ = usageSDKClient.Close()
+		return nil, err
+	}
+
+	return newClientForServices(
+		cfg,
+		usageSDKClient.CloudService(),
+		namespaceSDKClient.CloudService(),
+		workflowServiceFactoryFunc(newWorkflowService),
+		multiCloser{usageSDKClient, namespaceSDKClient},
+	), nil
 }
 
 func newClientForUsageService(cfg config.TemporalConfig, cloudService cloudService, closer closer) *Client {
-	return newClientForServices(cfg, cloudService, workflowServiceFactoryFunc(newWorkflowService), closer)
+	return newClientForServices(cfg, cloudService, nil, workflowServiceFactoryFunc(newWorkflowService), closer)
 }
 
-func newClientForServices(cfg config.TemporalConfig, cloudService cloudService, workflowFactory workflowServiceFactory, closer closer) *Client {
+func newClientForServices(cfg config.TemporalConfig, usageCloudService cloudService, namespaceCloudService cloudService, workflowFactory workflowServiceFactory, closer closer) *Client {
 	return &Client{
-		config:          cfg,
-		cloudService:    cloudService,
-		workflowFactory: workflowFactory,
-		closer:          closer,
+		config:                cfg,
+		usageCloudService:     usageCloudService,
+		namespaceCloudService: namespaceCloudService,
+		workflowFactory:       workflowFactory,
+		closer:                closer,
 	}
 }
 
 func newWorkflowService(cfg config.TemporalConfig, endpoint string) (workflowService, closer, error) {
+	log.Printf(
+		"temporal_workflow_credentials role=namespace endpoint=%q key_present=%t key_fingerprint=%q",
+		endpoint,
+		cfg.NamespaceAPIKey != "",
+		keyFingerprint(cfg.NamespaceAPIKey),
+	)
+
 	conn, err := grpc.NewClient(
 		endpoint,
 		grpc.WithTransportCredentials(credentials.NewTLS(nil)),
-		grpc.WithPerRPCCredentials(apiKeyCredentials{apiKey: cfg.APIKey}),
+		grpc.WithPerRPCCredentials(apiKeyCredentials{apiKey: cfg.NamespaceAPIKey}),
 		grpc.WithUserAgent("temporal-cost-optimizer"),
 	)
 	if err != nil {
@@ -115,6 +170,14 @@ func newWorkflowService(cfg config.TemporalConfig, endpoint string) (workflowSer
 	}
 
 	return workflowservice.NewWorkflowServiceClient(conn), conn, nil
+}
+
+func keyFingerprint(key string) string {
+	if key == "" {
+		return "missing"
+	}
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:])[:12]
 }
 
 func (c *Client) Config() config.TemporalConfig {
@@ -136,7 +199,7 @@ func (c *Client) GetUsage(ctx context.Context, query UsageQuery) (UsagePage, err
 		req.EndTimeExclusive = timestamppb.New(query.EndTimeExclusive)
 	}
 
-	resp, err := c.cloudService.GetUsage(ctx, req)
+	resp, err := c.usageCloudService.GetUsage(ctx, req)
 	if err != nil {
 		return UsagePage{}, err
 	}
@@ -151,32 +214,44 @@ func (c *Client) GetUsage(ctx context.Context, query UsageQuery) (UsagePage, err
 }
 
 func (c *Client) LastCompletedWorkflowHistory(ctx context.Context, namespace string, workflowID string) (WorkflowHistory, error) {
-	if c.cloudService == nil || c.workflowFactory == nil {
+	if c.namespaceCloudService == nil || c.workflowFactory == nil {
 		return WorkflowHistory{}, domain.ErrNotImplemented
 	}
 
+	startedAt := time.Now()
+	log.Printf("temporal_workflow_history_start namespace=%q workflow_id=%q", namespace, workflowID)
 	endpoint, err := c.workflowEndpoint(ctx, namespace)
 	if err != nil {
+		log.Printf("temporal_workflow_history_error namespace=%q workflow_id=%q step=resolve_endpoint duration=%s err=%q", namespace, workflowID, time.Since(startedAt), err.Error())
 		return WorkflowHistory{}, err
 	}
+	log.Printf("temporal_workflow_endpoint_resolved namespace=%q workflow_id=%q endpoint=%q", namespace, workflowID, endpoint)
 
 	workflowService, workflowCloser, err := c.workflowFactory.NewWorkflowService(c.config, endpoint)
 	if err != nil {
-		return WorkflowHistory{}, err
+		log.Printf("temporal_workflow_connect_error namespace=%q workflow_id=%q endpoint=%q duration=%s err=%q", namespace, workflowID, endpoint, time.Since(startedAt), err.Error())
+		return WorkflowHistory{}, fmt.Errorf("connect workflow service endpoint %q: %w", endpoint, err)
 	}
+	log.Printf("temporal_workflow_connected namespace=%q workflow_id=%q endpoint=%q", namespace, workflowID, endpoint)
 	if workflowCloser != nil {
 		defer workflowCloser.Close()
 	}
 
-	runID, err := c.lastCompletedRunID(ctx, workflowService, namespace, workflowID)
-	if err != nil {
-		return WorkflowHistory{}, err
-	}
+	workflowCtx := metadata.AppendToOutgoingContext(ctx, "temporal-namespace", namespace)
 
-	events, err := c.workflowHistory(ctx, workflowService, namespace, workflowID, runID)
+	runID, err := c.lastCompletedRunID(workflowCtx, workflowService, namespace, workflowID)
 	if err != nil {
+		log.Printf("temporal_workflow_history_error namespace=%q workflow_id=%q step=list_completed_runs duration=%s err=%q", namespace, workflowID, time.Since(startedAt), err.Error())
 		return WorkflowHistory{}, err
 	}
+	log.Printf("temporal_workflow_run_selected namespace=%q workflow_id=%q run_id=%q", namespace, workflowID, runID)
+
+	events, err := c.workflowHistory(workflowCtx, workflowService, namespace, workflowID, runID)
+	if err != nil {
+		log.Printf("temporal_workflow_history_error namespace=%q workflow_id=%q run_id=%q step=get_history duration=%s err=%q", namespace, workflowID, runID, time.Since(startedAt), err.Error())
+		return WorkflowHistory{}, err
+	}
+	log.Printf("temporal_workflow_history_complete namespace=%q workflow_id=%q run_id=%q events=%d duration=%s", namespace, workflowID, runID, len(events), time.Since(startedAt))
 
 	return WorkflowHistory{
 		Namespace:  namespace,
@@ -187,16 +262,20 @@ func (c *Client) LastCompletedWorkflowHistory(ctx context.Context, namespace str
 }
 
 func (c *Client) workflowEndpoint(ctx context.Context, namespace string) (string, error) {
-	resp, err := c.cloudService.GetNamespace(ctx, &cloudservice.GetNamespaceRequest{Namespace: namespace})
+	log.Printf("temporal_namespace_lookup_start namespace=%q", namespace)
+	resp, err := c.namespaceCloudService.GetNamespace(ctx, &cloudservice.GetNamespaceRequest{Namespace: namespace})
 	if err != nil {
-		return "", err
+		log.Printf("temporal_namespace_lookup_error namespace=%q err=%q", namespace, err.Error())
+		return "", fmt.Errorf("get namespace %q from Cloud Ops: %w", namespace, err)
 	}
 
 	endpoint := resp.GetNamespace().GetEndpoints().GetGrpcAddress()
 	if endpoint == "" {
-		return "", domain.ErrNotImplemented
+		log.Printf("temporal_namespace_lookup_error namespace=%q err=%q", namespace, "missing API-key gRPC endpoint")
+		return "", fmt.Errorf("namespace %q has no API-key gRPC endpoint: %w", namespace, domain.ErrNotImplemented)
 	}
 
+	log.Printf("temporal_namespace_lookup_complete namespace=%q endpoint=%q", namespace, endpoint)
 	return endpoint, nil
 }
 
@@ -206,6 +285,7 @@ func (c *Client) lastCompletedRunID(ctx context.Context, workflowService workflo
 	nextPageToken := []byte(nil)
 
 	for {
+		log.Printf("temporal_workflow_list_start namespace=%q workflow_id=%q page_size=%d has_page_token=%t", namespace, workflowID, defaultWorkflowListPageSize, len(nextPageToken) > 0)
 		resp, err := workflowService.ListWorkflowExecutions(ctx, &workflowservice.ListWorkflowExecutionsRequest{
 			Namespace:     namespace,
 			PageSize:      defaultWorkflowListPageSize,
@@ -213,8 +293,10 @@ func (c *Client) lastCompletedRunID(ctx context.Context, workflowService workflo
 			Query:         completedWorkflowQuery(workflowID),
 		})
 		if err != nil {
-			return "", err
+			log.Printf("temporal_workflow_list_error namespace=%q workflow_id=%q err=%q", namespace, workflowID, err.Error())
+			return "", fmt.Errorf("list completed workflow executions for namespace %q workflow %q: %w", namespace, workflowID, err)
 		}
+		log.Printf("temporal_workflow_list_complete namespace=%q workflow_id=%q executions=%d has_next_page=%t", namespace, workflowID, len(resp.GetExecutions()), len(resp.GetNextPageToken()) > 0)
 
 		for _, execution := range resp.GetExecutions() {
 			if execution.GetStatus() != enums.WORKFLOW_EXECUTION_STATUS_COMPLETED {
@@ -238,6 +320,7 @@ func (c *Client) lastCompletedRunID(ctx context.Context, workflowService workflo
 	}
 
 	if selectedRunID == "" {
+		log.Printf("temporal_workflow_run_not_found namespace=%q workflow_id=%q", namespace, workflowID)
 		return "", fmt.Errorf("no completed workflow execution found for namespace %q workflow %q", namespace, workflowID)
 	}
 
@@ -249,6 +332,7 @@ func (c *Client) workflowHistory(ctx context.Context, workflowService workflowSe
 	nextPageToken := []byte(nil)
 
 	for {
+		log.Printf("temporal_workflow_history_page_start namespace=%q workflow_id=%q run_id=%q page_size=%d has_page_token=%t", namespace, workflowID, runID, defaultHistoryPageSize, len(nextPageToken) > 0)
 		resp, err := workflowService.GetWorkflowExecutionHistory(ctx, &workflowservice.GetWorkflowExecutionHistoryRequest{
 			Namespace: namespace,
 			Execution: &common.WorkflowExecution{
@@ -259,10 +343,12 @@ func (c *Client) workflowHistory(ctx context.Context, workflowService workflowSe
 			NextPageToken:   nextPageToken,
 		})
 		if err != nil {
-			return nil, err
+			log.Printf("temporal_workflow_history_page_error namespace=%q workflow_id=%q run_id=%q err=%q", namespace, workflowID, runID, err.Error())
+			return nil, fmt.Errorf("get workflow history for namespace %q workflow %q run %q: %w", namespace, workflowID, runID, err)
 		}
 
 		events = append(events, resp.GetHistory().GetEvents()...)
+		log.Printf("temporal_workflow_history_page_complete namespace=%q workflow_id=%q run_id=%q events=%d total_events=%d has_next_page=%t", namespace, workflowID, runID, len(resp.GetHistory().GetEvents()), len(events), len(resp.GetNextPageToken()) > 0)
 		nextPageToken = resp.GetNextPageToken()
 		if len(nextPageToken) == 0 {
 			break

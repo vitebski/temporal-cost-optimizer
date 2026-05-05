@@ -1,9 +1,11 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -36,6 +38,27 @@ func TestRouterReturnsTopNamespaces(t *testing.T) {
 	}
 	if got := body.Items[0].Namespace; got != "payments-prod" {
 		t.Fatalf("namespace = %q, want payments-prod", got)
+	}
+}
+
+func TestRouterLogsRequests(t *testing.T) {
+	var logs bytes.Buffer
+	restore := captureLogs(&logs)
+	defer restore()
+
+	handler := NewRouter(&fakeAnalyzer{}, &fakeOptimizer{})
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	got := logs.String()
+	if !strings.Contains(got, `http_request method=GET path="/healthz"`) {
+		t.Fatalf("logs = %q, want request method and path", got)
+	}
+	if !strings.Contains(got, "status=200") {
+		t.Fatalf("logs = %q, want response status", got)
 	}
 }
 
@@ -105,7 +128,7 @@ func TestRouterReturnsWorkflowAnalysis(t *testing.T) {
 	optimizer := &fakeOptimizer{}
 	handler := NewRouter(&fakeAnalyzer{}, optimizer)
 
-	req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/analyze?namespace=payments-prod", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/optimize?namespace=payments-prod", nil)
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -132,7 +155,7 @@ func TestRouterReturnsWorkflowAnalysis(t *testing.T) {
 func TestRouterRequiresNamespaceForWorkflowAnalysis(t *testing.T) {
 	handler := NewRouter(&fakeAnalyzer{}, &fakeOptimizer{})
 
-	req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/analyze", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/optimize", nil)
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -185,7 +208,7 @@ func TestRouterMapsOptimizerNotImplementedTo501(t *testing.T) {
 	optimizer := &fakeOptimizer{err: domain.ErrNotImplemented}
 	handler := NewRouter(&fakeAnalyzer{}, optimizer)
 
-	req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/analyze?namespace=payments-prod", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows/wf-123/optimize?namespace=payments-prod", nil)
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -328,3 +351,14 @@ func (f *fakeOptimizer) AnalyzeWorkflow(_ context.Context, namespace string, wor
 
 var _ domain.Analyzer = (*fakeAnalyzer)(nil)
 var _ domain.Optimizer = (*fakeOptimizer)(nil)
+
+func captureLogs(buffer *bytes.Buffer) func() {
+	previousWriter := log.Writer()
+	previousFlags := log.Flags()
+	log.SetOutput(buffer)
+	log.SetFlags(0)
+	return func() {
+		log.SetOutput(previousWriter)
+		log.SetFlags(previousFlags)
+	}
+}

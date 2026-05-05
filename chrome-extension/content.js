@@ -84,9 +84,9 @@ async function getWorkflowUsage(namespace, workflowType) {
   return { ...STUB_WORKFLOW_USAGE._default, workflowType, namespace, _stub: true };
 }
 
-async function getWorkflowAnalysis(workflowId) {
+async function getWorkflowAnalysis(namespace, workflowId) {
   try {
-    const res = await fetch(`${API_BASE}/workflows/${encodeURIComponent(workflowId)}/analyze`);
+    const res = await fetch(`${API_BASE}/workflows/${encodeURIComponent(workflowId)}/optimize?namespace=${encodeURIComponent(namespace)}`);
     if (res.ok) { const data = await res.json(); return { ...data, _stub: false }; }
   } catch (e) { /* fall through */ }
   return { ...STUB_ANALYSIS._default, workflowId, _stub: true };
@@ -449,14 +449,14 @@ async function renderWorkflowUsage(namespace, workflowType) {
 
 // --- Screen 4: Workflow Analysis ---
 
-async function renderWorkflowAnalysis(workflowId) {
+async function renderWorkflowAnalysis(namespace, workflowId) {
   const main = ensureTcaContainer();
   if (!main) return;
   isActive = true;
   renderLoading(main);
   updateNavHighlight(true);
 
-  const data = await getWorkflowAnalysis(workflowId);
+  const data = await getWorkflowAnalysis(namespace, workflowId);
   const isStub = data._stub;
 
   const findingsHTML = (data.signals || []).map((s) => `
@@ -531,9 +531,10 @@ function handleRoute() {
   } else if (hash.match(/^#\/cost-analyser\/namespace\/[^/]+$/)) {
     const ns = hash.replace("#/cost-analyser/namespace/", "");
     renderWorkflowTypes(decodeURIComponent(ns));
-  } else if (hash.match(/^#\/cost-analyser\/workflow\/[^/]+\/analyze$/)) {
-    const wfId = hash.replace("#/cost-analyser/workflow/", "").replace("/analyze", "");
-    renderWorkflowAnalysis(decodeURIComponent(wfId));
+  } else if (hash.match(/^#\/cost-analyser\/namespace\/[^/]+\/workflow\/[^/]+\/optimize$/)) {
+    const parts = hash.replace("#/cost-analyser/namespace/", "").split("/workflow/");
+    const workflowId = parts[1].replace("/optimize", "");
+    renderWorkflowAnalysis(decodeURIComponent(parts[0]), decodeURIComponent(workflowId));
   } else if (isActive) {
     restoreOriginalContent();
   }

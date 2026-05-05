@@ -14,10 +14,11 @@ type Config struct {
 }
 
 type TemporalConfig struct {
-	APIKey        string
-	APIHostPort   string
-	APIVersion    string
-	UsagePageSize int32
+	UsageAPIKey     string
+	NamespaceAPIKey string
+	APIHostPort     string
+	APIVersion      string
+	UsagePageSize   int32
 }
 
 func LoadFile(path string) (Config, error) {
@@ -34,10 +35,11 @@ func LoadFile(path string) (Config, error) {
 	return Config{
 		HTTPAddr: getValue(values, "HTTP_ADDR", ":8080"),
 		Temporal: TemporalConfig{
-			APIKey:        getValue(values, "TEMPORAL_CLOUD_API_KEY", ""),
-			APIHostPort:   getValue(values, "TEMPORAL_CLOUD_API_HOST_PORT", ""),
-			APIVersion:    getValue(values, "TEMPORAL_CLOUD_API_VERSION", ""),
-			UsagePageSize: usagePageSize,
+			UsageAPIKey:     getValue(values, "TEMPORAL_CLOUD_USAGE_API_KEY", ""),
+			NamespaceAPIKey: getValue(values, "TEMPORAL_CLOUD_NAMESPACE_API_KEY", ""),
+			APIHostPort:     getValue(values, "TEMPORAL_CLOUD_API_HOST_PORT", ""),
+			APIVersion:      getValue(values, "TEMPORAL_CLOUD_API_VERSION", ""),
+			UsagePageSize:   usagePageSize,
 		},
 	}, nil
 }

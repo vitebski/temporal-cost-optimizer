@@ -173,7 +173,7 @@ sequenceDiagram
   An-->>Ext: Workflow usage summary
 
   User->>Ext: Click execution analysis
-  Ext->>Op: GET /workflows/{id}/analyze
+  Ext->>Op: GET /workflows/{id}/optimize?namespace={name}
   Op->>Tc: Fetch workflow history
   Tc-->>Op: Workflow history
   Op-->>Ext: Optimization hints
@@ -309,7 +309,7 @@ Analyze only the last completed workflow execution and generate actionable optim
 
 ### Suggested API
 
-#### `GET /workflows/{workflowId}/analyze`
+#### `GET /workflows/{workflowId}/optimize?namespace={name}`
 
 Returns heuristic findings for the last completed workflow execution only. The backend must ignore running or in-flight executions and analyze the most recent completed run.
 

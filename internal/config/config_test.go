@@ -17,8 +17,11 @@ func TestLoadFileUsesSafeDefaults(t *testing.T) {
 	if cfg.HTTPAddr != ":8080" {
 		t.Fatalf("HTTPAddr = %q, want :8080", cfg.HTTPAddr)
 	}
-	if cfg.Temporal.APIKey != "" {
-		t.Fatalf("Temporal APIKey = %q, want empty", cfg.Temporal.APIKey)
+	if cfg.Temporal.UsageAPIKey != "" {
+		t.Fatalf("Temporal UsageAPIKey = %q, want empty", cfg.Temporal.UsageAPIKey)
+	}
+	if cfg.Temporal.NamespaceAPIKey != "" {
+		t.Fatalf("Temporal NamespaceAPIKey = %q, want empty", cfg.Temporal.NamespaceAPIKey)
 	}
 	if cfg.Temporal.UsagePageSize != 100 {
 		t.Fatalf("usage page size = %d, want 100", cfg.Temporal.UsagePageSize)
@@ -28,7 +31,8 @@ func TestLoadFileUsesSafeDefaults(t *testing.T) {
 func TestLoadFileReadsTemporalSettingsFromDotEnv(t *testing.T) {
 	path := writeDotEnv(t, `
 HTTP_ADDR=:9090
-TEMPORAL_CLOUD_API_KEY=secret-token
+TEMPORAL_CLOUD_USAGE_API_KEY=usage-secret
+TEMPORAL_CLOUD_NAMESPACE_API_KEY=namespace-secret
 TEMPORAL_CLOUD_API_HOST_PORT=cloud.example.com:443
 TEMPORAL_CLOUD_API_VERSION=v0.14.0
 TEMPORAL_USAGE_PAGE_SIZE=250
@@ -42,8 +46,11 @@ TEMPORAL_USAGE_PAGE_SIZE=250
 	if cfg.HTTPAddr != ":9090" {
 		t.Fatalf("HTTPAddr = %q, want :9090", cfg.HTTPAddr)
 	}
-	if cfg.Temporal.APIKey != "secret-token" {
-		t.Fatalf("Temporal APIKey = %q, want secret-token", cfg.Temporal.APIKey)
+	if cfg.Temporal.UsageAPIKey != "usage-secret" {
+		t.Fatalf("Temporal UsageAPIKey = %q, want usage-secret", cfg.Temporal.UsageAPIKey)
+	}
+	if cfg.Temporal.NamespaceAPIKey != "namespace-secret" {
+		t.Fatalf("Temporal NamespaceAPIKey = %q, want namespace-secret", cfg.Temporal.NamespaceAPIKey)
 	}
 	if cfg.Temporal.APIHostPort != "cloud.example.com:443" {
 		t.Fatalf("Temporal hostport = %q, want cloud.example.com:443", cfg.Temporal.APIHostPort)
