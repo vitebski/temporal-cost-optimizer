@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"sort"
+	"time"
 
 	"temporal-cost-optimizer/internal/domain"
 	"temporal-cost-optimizer/internal/temporalcloud"
@@ -24,10 +25,15 @@ func NewService(temporal TemporalUsageClient) *Service {
 }
 
 func (s *Service) TopNamespaces(ctx context.Context, top int) ([]domain.NamespaceSummary, error) {
+	today := time.Now().UTC().Truncate(24 * time.Hour)
 	var summaries []*usage.Summary
 	pageToken := ""
 	for {
-		page, err := s.temporal.GetUsage(ctx, temporalcloud.UsageQuery{PageToken: pageToken})
+		page, err := s.temporal.GetUsage(ctx, temporalcloud.UsageQuery{
+			StartTimeInclusive: today.AddDate(0, 0, -30),
+			EndTimeExclusive:   today,
+			PageToken:          pageToken,
+		})
 		if err != nil {
 			return nil, err
 		}

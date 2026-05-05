@@ -385,7 +385,7 @@ async function renderWorkflowUsage(namespace, workflowType) {
           <h1 style="font-size: 1.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #f8fafc;">${workflowType}</h1>
           <p style="color: #94a3b8; font-size: 0.875rem;">${namespace}</p>
         </div>
-        <a class="tca-optimize-btn" href="#/cost-analyser/workflow/${encodeURIComponent(workflowType)}/analyze">
+        <a class="tca-optimize-btn" href="#/cost-analyser/namespace/${encodeURIComponent(namespace)}/workflow/${encodeURIComponent(workflowType)}/optimize">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           Optimize
         </a>
