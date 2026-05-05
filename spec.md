@@ -169,7 +169,7 @@ sequenceDiagram
   An-->>Ext: Top 5 workflow types
 
   User->>Ext: Click workflow type
-  Ext->>An: GET /workflow-types/{type}/usage
+  Ext->>An: GET /workflow-types/{type}/usage?namespace={name}
   An-->>Ext: Workflow usage summary
 
   User->>Ext: Click execution analysis
@@ -253,9 +253,10 @@ Response example:
 }
 ```
 
-#### `GET /workflow-types/{workflowType}/usage`
+#### `GET /workflow-types/{workflowType}/usage?namespace={name}`
 
 Returns a usage summary for the selected workflow type.
+`namespace` is required because workflow type names are only unique within a namespace.
 
 Response example:
 
@@ -404,7 +405,7 @@ flowchart LR
 ### WorkflowUsageSummary
 
 - workflowType
-- totalExecutions
+- executions
 - billableActions
 - storage (active, retained)
 - averageHistoryEvents
