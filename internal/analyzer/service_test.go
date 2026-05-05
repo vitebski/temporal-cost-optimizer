@@ -9,6 +9,10 @@ import (
 	"temporal-cost-optimizer/internal/temporalcloud"
 )
 
+// gbHourInByteSeconds is how many byte-seconds make up one GB-hour, used
+// to make storage values in tests human-readable.
+const gbHourInByteSeconds = 1e9 * 3600
+
 func TestTopNamespacesAggregatesUsageSummariesByNamespace(t *testing.T) {
 	client := &fakeUsageClient{
 		pages: []temporalcloud.UsagePage{
@@ -18,8 +22,8 @@ func TestTopNamespacesAggregatesUsageSummariesByNamespace(t *testing.T) {
 						RecordGroups: []*usage.RecordGroup{
 							recordGroup("payments-prod",
 								record(usage.RecordType_RECORD_TYPE_ACTIONS, 10),
-								record(usage.RecordType_RECORD_TYPE_ACTIVE_STORAGE, 100),
-								record(usage.RecordType_RECORD_TYPE_RETAINED_STORAGE, 50),
+								record(usage.RecordType_RECORD_TYPE_ACTIVE_STORAGE, 100*gbHourInByteSeconds),
+								record(usage.RecordType_RECORD_TYPE_RETAINED_STORAGE, 50*gbHourInByteSeconds),
 							),
 							recordGroup("search-prod",
 								record(usage.RecordType_RECORD_TYPE_ACTIONS, 120),
@@ -50,7 +54,14 @@ func TestTopNamespacesAggregatesUsageSummariesByNamespace(t *testing.T) {
 		t.Fatalf("usage score = %v, want 160", items[0].UsageScore)
 	}
 	if items[0].Storage.Active.Usage != 100 {
-		t.Fatalf("active storage usage = %v, want 100", items[0].Storage.Active.Usage)
+		t.Fatalf("active storage usage = %v GB-hours, want 100", items[0].Storage.Active.Usage)
+	}
+	if items[0].Storage.Retained.Usage != 50 {
+		t.Fatalf("retained storage usage = %v GB-hours, want 50", items[0].Storage.Retained.Usage)
+	}
+	// 160 * 0.0001 = 0.016, rounded to 2dp = 0.02.
+	if items[0].EstimatedCost != 0.02 {
+		t.Fatalf("estimated cost = %v, want 0.02", items[0].EstimatedCost)
 	}
 	if client.queries[0].PageSize != 0 {
 		t.Fatalf("usage query page size = %d, want 0 so client config can apply", client.queries[0].PageSize)

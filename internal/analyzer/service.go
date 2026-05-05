@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"context"
+	"math"
 	"sort"
 
 	"temporal-cost-optimizer/internal/domain"
@@ -65,6 +66,23 @@ func (s *Service) WorkflowUsage(context.Context, string, string) (domain.Workflo
 
 var _ domain.Analyzer = (*Service)(nil)
 
+// estimatedCostPerScoreUnit is a placeholder multiplier so the namespaces
+// screen has a non-zero cost column for the demo. It is not a real billing
+// rate and intentionally lives in code rather than configuration.
+const estimatedCostPerScoreUnit = 0.0001
+
+// byteSecondsToGBHours converts the Cloud Usage API's storage unit
+// (bytes × seconds) into the much more readable GB-hours.
+func byteSecondsToGBHours(byteSeconds float64) float64 {
+	return byteSeconds / (1e9 * 3600)
+}
+
+// roundTo2DP rounds a value to two decimal places to keep the JSON
+// response readable for the extension UI.
+func roundTo2DP(value float64) float64 {
+	return math.Round(value*100) / 100
+}
+
 func namespaceSummaries(summaries []*usage.Summary) []domain.NamespaceSummary {
 	byNamespace := make(map[string]*domain.NamespaceSummary)
 	for _, summary := range summaries {
@@ -86,11 +104,13 @@ func namespaceSummaries(summaries []*usage.Summary) []domain.NamespaceSummary {
 				case usage.RecordType_RECORD_TYPE_ACTIONS:
 					item.UsageScore += record.GetValue()
 				case usage.RecordType_RECORD_TYPE_ACTIVE_STORAGE:
-					item.Storage.Active.Usage += record.GetValue()
-					item.UsageScore += record.GetValue()
+					gbHours := byteSecondsToGBHours(record.GetValue())
+					item.Storage.Active.Usage += gbHours
+					item.UsageScore += gbHours
 				case usage.RecordType_RECORD_TYPE_RETAINED_STORAGE:
-					item.Storage.Retained.Usage += record.GetValue()
-					item.UsageScore += record.GetValue()
+					gbHours := byteSecondsToGBHours(record.GetValue())
+					item.Storage.Retained.Usage += gbHours
+					item.UsageScore += gbHours
 				}
 			}
 		}
@@ -98,6 +118,15 @@ func namespaceSummaries(summaries []*usage.Summary) []domain.NamespaceSummary {
 
 	items := make([]domain.NamespaceSummary, 0, len(byNamespace))
 	for _, item := range byNamespace {
+		item.EstimatedCost = item.UsageScore * estimatedCostPerScoreUnit
+
+		item.UsageScore = roundTo2DP(item.UsageScore)
+		item.EstimatedCost = roundTo2DP(item.EstimatedCost)
+		item.Storage.Active.Usage = roundTo2DP(item.Storage.Active.Usage)
+		item.Storage.Active.Cost = roundTo2DP(item.Storage.Active.Cost)
+		item.Storage.Retained.Usage = roundTo2DP(item.Storage.Retained.Usage)
+		item.Storage.Retained.Cost = roundTo2DP(item.Storage.Retained.Cost)
+
 		items = append(items, *item)
 	}
 	return items
